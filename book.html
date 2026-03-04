@@ -233,4 +233,12 @@ function sendHeight() {
   window.parent.postMessage({ frameId: 'qs-book-frame', height: h }, '*');
 }
 window.addEventListener('load', sendHeight);
-window.addEventListener('r
+window.addEventListener('resize', sendHeight);
+if (window.MutationObserver) {
+  new MutationObserver(sendHeight).observe(document.body, { subtree:true, childList:true, attributes:true });
+}
+setTimeout(sendHeight, 300);
+setTimeout(sendHeight, 1000);
+</script>
+</body>
+</html>
