@@ -267,12 +267,9 @@ async function revealQuote() {
       make: state.vehicle.make,
       model: state.vehicle.model,
       year: String(state.vehicle.year),
-      fuel: state.vehicle.fuel,
-      engine: state.vehicle.engine,
       weight: state.vehicle.weight,
+      price_per_ton: state.zone.pricePerTon,
       quote: state.quote,
-      alloys: state.alloys,
-      dropoff: state.dropoff,
     });
   } catch(e) { console.warn('Lead save failed', e); }
   loading('btn2','spin2','btn2Text', false, 'Send Me My Quote');
