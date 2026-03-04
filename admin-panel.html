@@ -696,5 +696,20 @@ function dl(blob,filename) {
 }
 function today() { return new Date().toISOString().slice(0,10); }
 </script>
+
+<script>
+(function() {
+  function sendHeight() {
+    var h = document.body ? document.body.scrollHeight : 0;
+    window.parent.postMessage({ frameId: 'qs-admin-frame', height: h }, '*');
+  }
+  window.addEventListener('load', sendHeight);
+  window.addEventListener('resize', sendHeight);
+  // Also send on DOM changes
+  if (window.MutationObserver) {
+    new MutationObserver(sendHeight).observe(document.body, { subtree: true, childList: true, attributes: true });
+  }
+})();
+</script>
 </body>
 </html>
