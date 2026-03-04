@@ -162,7 +162,7 @@
     <div class="disclaimer">
       ⚠ <strong>Quote is for a complete vehicle.</strong> If your car is missing major parts (engine, gearbox, doors, catalytic converter, etc.) this may affect your quote. Please contact us before booking:<br>
       📞 <a href="tel:01872218907">01872 218907</a> &nbsp;|&nbsp;
-      ✉ <a href="mailto:hello@quickscrap.co.uk">hello@quickscrap.co.uk</a>
+      ✉ <a href="/cdn-cgi/l/email-protection#335b565f5f5c7342465a505840504152431d505c1d4658"><span class="__cf_email__" data-cfemail="0f676a6363604f7e7a666c647c6c7d6e7f216c60217a64">[email&#160;protected]</span></a>
     </div>
     <div class="email-notice">✉ &nbsp;Quote sent to <strong id="sentEmail"></strong></div>
     <a class="btn-main" id="btnBook" href="#" onclick="goToBooking(); return false;">Book My Collection →</a>
@@ -181,7 +181,7 @@
 </div>
 </div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 const SUPA_URL = 'https://rwqjfjhgdgwhatgrcedt.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3cWpmamhnZGd3aGF0Z3JjZWR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MjIyMDIsImV4cCI6MjA4ODE5ODIwMn0.gPP167Bbe4z_KhZ82_Q7-k-mlFz0m3aG4VmxXjDlGc8';
 
@@ -273,7 +273,7 @@ async function revealQuote() {
 
 function goToBooking() {
   const params = new URLSearchParams({
-    reg: state.reg, postcode: state.pc, quote: state.quote,
+    reg: state.reg, postcode: state.pc, amt: state.quote,
     vehicle: `${state.vehicle.year} ${state.vehicle.make} ${state.vehicle.model}`,
     make: state.vehicle.make, model: state.vehicle.model, year: state.vehicle.year,
     fuel: state.vehicle.fuel, engine: state.vehicle.engine, weight: state.vehicle.weight,
@@ -350,12 +350,4 @@ function sendHeight() {
   window.parent.postMessage({ frameId: 'qs-widget-frame', height: h }, '*');
 }
 window.addEventListener('load', sendHeight);
-window.addEventListener('resize', sendHeight);
-if (window.MutationObserver) {
-  new MutationObserver(sendHeight).observe(document.body, { subtree:true, childList:true, attributes:true });
-}
-setTimeout(sendHeight, 300);
-setTimeout(sendHeight, 1000);
-</script>
-</body>
-</html>
+window.addEventListener('r

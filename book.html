@@ -148,13 +148,13 @@ window.addEventListener('DOMContentLoaded', () => {
   const p = new URLSearchParams(window.location.search);
   if (p.get('email'))    document.getElementById('bEmail').value    = p.get('email');
   if (p.get('postcode')) document.getElementById('bPostcode').value = p.get('postcode');
-  if (p.get('quote') || p.get('reg') || p.get('vehicle')) {
+  if (p.get('amt') || p.get('reg') || p.get('vehicle')) {
     const summary = document.getElementById('quoteSummary');
     summary.style.display = 'block';
     const alloys  = p.get('alloys') === '1';
     const dropoff = p.get('dropoff') === '1';
     const bonus   = parseInt(p.get('bonus') || '0');
-    const base    = parseInt(p.get('quote') || '0') - bonus;
+    const base    = parseInt(p.get('amt') || '0') - bonus;
     let bonusTags = '';
     if (alloys)  bonusTags += '<div class="qs-bonus-tag">✅ Alloy Wheels +£20</div>';
     if (dropoff) bonusTags += '<div class="qs-bonus-tag">✅ Drop-off +£30</div>';
@@ -177,7 +177,7 @@ window.addEventListener('DOMContentLoaded', () => {
       ${bonusTags ? `<div class="qs-bonuses">${bonusTags}</div>` : ''}
       <div class="qs-quote-row">
         <div class="qs-quote-label">Your Quote</div>
-        <div><div class="qs-quote-amount">£${p.get('quote') || '0'}</div>${breakdownLine}</div>
+        <div><div class="qs-quote-amount">£${p.get('amt') || '0'}</div>${breakdownLine}</div>
       </div>`;
     sendHeight();
   }
@@ -204,7 +204,7 @@ async function submitBooking() {
       name, phone, email, address,
       postcode: postcode || p.get('postcode') || null,
       reg: p.get('reg') || null,
-      quote: p.get('quote') ? parseFloat(p.get('quote')) : null,
+      quote: p.get('amt') ? parseFloat(p.get('amt')) : null,
       area: p.get('area') || null,
       driveable: radioState.driveable === 'yes' ? true : radioState.driveable === 'no' ? false : null,
       has_v5: radioState.v5 || null,
