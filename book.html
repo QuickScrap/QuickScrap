@@ -6,8 +6,9 @@
 <title>Book Your Collection — QuickScrap</title>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Epilogue:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  html, body { height: auto !important; margin: 0; padding: 0; }
   #qs-book-root * { box-sizing: border-box; margin: 0; padding: 0; }
-  #qs-book-root { display: block; font-family: 'Epilogue', sans-serif; font-size: 16px; color: #F4F4F3; background: #232323; min-height: 100vh; }
+  #qs-book-root { display: block; font-family: 'Epilogue', sans-serif; font-size: 16px; color: #F4F4F3; background: #232323; }
   #qs-book-root .topbar { background: #383838; border-bottom: 3px solid #FFD21F; padding: 0 32px; display: flex; align-items: center; height: 60px; }
   #qs-book-root .logo { font-family: 'Anton', sans-serif; font-size: 1.4rem; color: #F4F4F3; text-decoration: none; }
   #qs-book-root .logo span { color: #FFD21F; }
@@ -119,12 +120,12 @@
       <p>Thanks <strong id="successName" style="color:#FFD21F;"></strong>!<br><br>
         We'll be in touch shortly to confirm your collection.<br><br>
         <strong style="color:#F4F4F3;">Cash paid on collection day.</strong></p>
-      <div class="contact-line">Questions? Call <a href="tel:01872218907">01872 218907</a> or email <a href="mailto:hello@quickscrap.co.uk">hello@quickscrap.co.uk</a></div>
+      <div class="contact-line">Questions? Call <a href="tel:01872218907">01872 218907</a> or email <a href="/cdn-cgi/l/email-protection#b5ddd0d9d9daf5c4c0dcd6dec6d6c7d4c59bd6da9bc0de"><span class="__cf_email__" data-cfemail="aac2cfc6c6c5eadbdfc3c9c1d9c9d8cbda84c9c584dfc1">[email&#160;protected]</span></a></div>
     </div>
   </div>
 </div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 const SUPA_URL = 'https://rwqjfjhgdgwhatgrcedt.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3cWpmamhnZGd3aGF0Z3JjZWR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MjIyMDIsImV4cCI6MjA4ODE5ODIwMn0.gPP167Bbe4z_KhZ82_Q7-k-mlFz0m3aG4VmxXjDlGc8';
 
@@ -233,12 +234,4 @@ function sendHeight() {
   window.parent.postMessage({ frameId: 'qs-book-frame', height: h }, '*');
 }
 window.addEventListener('load', sendHeight);
-window.addEventListener('resize', sendHeight);
-if (window.MutationObserver) {
-  new MutationObserver(sendHeight).observe(document.body, { subtree:true, childList:true, attributes:true });
-}
-setTimeout(sendHeight, 300);
-setTimeout(sendHeight, 1000);
-</script>
-</body>
-</html>
+window.addEventListener('r
