@@ -217,6 +217,9 @@ async function submitBooking() {
     document.getElementById('successBox').classList.add('show');
     window.scrollTo(0,0);
     sendHeight();
+    setTimeout(sendHeight, 100);
+    setTimeout(sendHeight, 500);
+    setTimeout(sendHeight, 1000);
   } catch(e) {
     showErr('Something went wrong — please try again or call us on 01872 218907.');
     btn.disabled = false; btn.textContent = 'Confirm Booking Request';
