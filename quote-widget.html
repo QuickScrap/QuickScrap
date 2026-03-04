@@ -258,6 +258,24 @@ async function revealQuote() {
   state.quote = state.baseQuote + bonus;
   loading('btn2','spin2','btn2Text', true, 'Sending your quote...');
   await sendQuoteEmail(email, state);
+  // Save lead to Supabase
+  try {
+    await supaPost('leads', {
+      email,
+      reg: state.reg,
+      postcode: state.pc,
+      area: state.zone.area,
+      make: state.vehicle.make,
+      model: state.vehicle.model,
+      year: String(state.vehicle.year),
+      fuel: state.vehicle.fuel,
+      engine: state.vehicle.engine,
+      weight: state.vehicle.weight,
+      quote: state.quote,
+      alloys: state.alloys,
+      dropoff: state.dropoff,
+    });
+  } catch(e) { console.warn('Lead save failed', e); }
   loading('btn2','spin2','btn2Text', false, 'Send Me My Quote');
   let breakdownHTML = `<div class="qb-row"><span class="qb-label">Base scrap value (${Number(state.vehicle.weight||0).toLocaleString()} kg)</span><span class="qb-val">£${state.baseQuote}</span></div>`;
   if (state.alloys) breakdownHTML += `<div class="qb-row"><span class="qb-label">Alloy wheels bonus</span><span class="qb-val green">+£20</span></div>`;
