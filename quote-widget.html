@@ -298,8 +298,50 @@ function goToBooking() {
 }
 
 async function sendQuoteEmail(email, data) {
-  console.log(`[QuickScrap] Quote → ${email}`, { vehicle:`${data.vehicle.year} ${data.vehicle.make} ${data.vehicle.model}`, reg:data.reg, quote:`£${data.quote}` });
-  await new Promise(r=>setTimeout(r,700));
+  const bonus = getBonusAmount();
+  const bonusLines = [];
+  if (data.alloys) bonusLines.push('<tr><td style="padding:6px 0;color:#666;">Alloy wheels bonus</td><td style="padding:6px 0;text-align:right;color:#2ecc71;font-weight:600;">+£20</td></tr>');
+  if (data.dropoff) bonusLines.push('<tr><td style="padding:6px 0;color:#666;">Drop-off bonus</td><td style="padding:6px 0;text-align:right;color:#2ecc71;font-weight:600;">+£30</td></tr>');
+  const bookingUrl = `https://quickscrap.co.uk/book-a-collection?reg=${data.reg}&postcode=${data.pc}&amt=${data.quote}&vehicle=${encodeURIComponent(data.vehicle.year+' '+data.vehicle.make+' '+data.vehicle.model)}&make=${encodeURIComponent(data.vehicle.make)}&model=${encodeURIComponent(data.vehicle.model)}&year=${data.vehicle.year}&fuel=${encodeURIComponent(data.vehicle.fuel)}&engine=${encodeURIComponent(data.vehicle.engine)}&weight=${data.vehicle.weight}&area=${encodeURIComponent(data.zone.area)}&email=${encodeURIComponent(email)}&alloys=${data.alloys?'1':'0'}&dropoff=${data.dropoff?'1':'0'}&bonus=${bonus}`;
+  
+  try {
+    await fetch('https://quickscrap-proxy.spring-fog-4db0.workers.dev/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: 'QuickScrap <hello@quickscrap.co.uk>',
+        to: [email],
+        subject: `Your QuickScrap Quote — £${data.quote}`,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#fff;">
+            <div style="background:#383838;padding:24px 28px;">
+              <img src="https://images.squarespace-cdn.com/content/v1/689b5ba5c7aa8b553d080da7/d4f8316d-5ab3-455e-a44b-a159aa04eb3f/QUICK+SCRAP.png?format=1500w" alt="QuickScrap" style="height:40px;">
+            </div>
+            <div style="padding:28px;">
+              <h2 style="margin:0 0 6px;font-size:1.4rem;color:#232323;">Your Scrap Quote is Ready!</h2>
+              <p style="color:#666;margin:0 0 20px;">Hi there, here's your instant scrap quote for your ${data.vehicle.year} ${data.vehicle.make} ${data.vehicle.model}.</p>
+              <div style="background:#FFD21F;padding:20px;text-align:center;margin-bottom:20px;">
+                <div style="font-size:0.75rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#383838;opacity:0.6;">Your Scrap Value</div>
+                <div style="font-size:3rem;font-weight:900;color:#383838;line-height:1.1;">£${data.quote}</div>
+              </div>
+              <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+                <tr><td style="padding:6px 0;color:#666;">Vehicle</td><td style="padding:6px 0;text-align:right;font-weight:600;">${data.vehicle.year} ${data.vehicle.make} ${data.vehicle.model}</td></tr>
+                <tr><td style="padding:6px 0;color:#666;">Registration</td><td style="padding:6px 0;text-align:right;font-weight:600;">${data.reg}</td></tr>
+                <tr><td style="padding:6px 0;color:#666;">Base value</td><td style="padding:6px 0;text-align:right;font-weight:600;">£${data.baseQuote}</td></tr>
+                ${bonusLines.join('')}
+                <tr style="border-top:2px solid #FFD21F;"><td style="padding:8px 0;font-weight:700;color:#232323;">Total Quote</td><td style="padding:8px 0;text-align:right;font-weight:700;color:#232323;font-size:1.1rem;">£${data.quote}</td></tr>
+              </table>
+              <a href="${bookingUrl}" style="display:block;background:#FFD21F;color:#383838;text-align:center;padding:14px;font-weight:700;text-decoration:none;font-size:1rem;letter-spacing:1px;text-transform:uppercase;margin-bottom:20px;">Book My Collection →</a>
+              <p style="color:#999;font-size:0.8rem;line-height:1.6;">⚠ Quote is for a complete vehicle. Missing major parts may affect the final price. Call us on <strong>01872 218907</strong> if you have any questions.</p>
+            </div>
+            <div style="background:#383838;padding:16px 28px;text-align:center;">
+              <p style="color:#999;font-size:0.75rem;margin:0;">QuickScrap · Newham Road, Truro, TR1 2SU · 01872 218907</p>
+            </div>
+          </div>
+        `
+      })
+    });
+  } catch(e) { console.warn('Email failed', e); }
 }
 
 async function fetchVehicle(reg) {

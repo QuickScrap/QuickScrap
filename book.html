@@ -212,6 +212,81 @@ async function submitBooking() {
       notes: notes || null,
     });
     if (!res.ok) throw new Error('Save failed');
+
+    // Send confirmation emails
+    const p = new URLSearchParams(window.location.search);
+    const vehicle = p.get('vehicle') || 'Vehicle';
+    const quote = p.get('amt') || '—';
+    const reg = p.get('reg') || '—';
+    try {
+      // Email to customer
+      await fetch('https://quickscrap-proxy.spring-fog-4db0.workers.dev/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: 'QuickScrap <hello@quickscrap.co.uk>',
+          to: [email],
+          subject: 'Booking Confirmed — QuickScrap',
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#fff;">
+              <div style="background:#383838;padding:24px 28px;">
+                <img src="https://images.squarespace-cdn.com/content/v1/689b5ba5c7aa8b553d080da7/d4f8316d-5ab3-455e-a44b-a159aa04eb3f/QUICK+SCRAP.png?format=1500w" alt="QuickScrap" style="height:40px;">
+              </div>
+              <div style="padding:28px;">
+                <h2 style="margin:0 0 6px;font-size:1.4rem;color:#232323;">Booking Request Received!</h2>
+                <p style="color:#666;margin:0 0 20px;">Hi ${name.split(' ')[0]}, we've received your booking request and will be in touch shortly to confirm your collection.</p>
+                <div style="background:#f9f9f9;border-left:4px solid #FFD21F;padding:16px 20px;margin-bottom:20px;">
+                  <table style="width:100%;border-collapse:collapse;">
+                    <tr><td style="padding:5px 0;color:#666;">Vehicle</td><td style="padding:5px 0;text-align:right;font-weight:600;">${vehicle}</td></tr>
+                    <tr><td style="padding:5px 0;color:#666;">Registration</td><td style="padding:5px 0;text-align:right;font-weight:600;">${reg}</td></tr>
+                    <tr><td style="padding:5px 0;color:#666;">Quote</td><td style="padding:5px 0;text-align:right;font-weight:600;color:#232323;">£${quote}</td></tr>
+                    <tr><td style="padding:5px 0;color:#666;">Collection Address</td><td style="padding:5px 0;text-align:right;font-weight:600;">${address}</td></tr>
+                  </table>
+                </div>
+                <p style="color:#666;font-size:0.9rem;line-height:1.6;">Questions? Call us on <strong>01872 218907</strong></p>
+              </div>
+              <div style="background:#383838;padding:16px 28px;text-align:center;">
+                <p style="color:#999;font-size:0.75rem;margin:0;">QuickScrap · Newham Road, Truro, TR1 2SU · 01872 218907</p>
+              </div>
+            </div>
+          `
+        })
+      });
+
+      // Email to QuickScrap
+      await fetch('https://quickscrap-proxy.spring-fog-4db0.workers.dev/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: 'QuickScrap Bookings <hello@quickscrap.co.uk>',
+          to: ['hello@quickscrap.co.uk'],
+          subject: `New Booking — ${name} — ${reg}`,
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#fff;">
+              <div style="background:#383838;padding:24px 28px;">
+                <img src="https://images.squarespace-cdn.com/content/v1/689b5ba5c7aa8b553d080da7/d4f8316d-5ab3-455e-a44b-a159aa04eb3f/QUICK+SCRAP.png?format=1500w" alt="QuickScrap" style="height:40px;"> <span style="color:#FFD21F;font-family:Arial,sans-serif;font-size:0.9rem;font-weight:700;vertical-align:middle;margin-left:10px;">NEW BOOKING</span>
+              </div>
+              <div style="padding:28px;">
+                <table style="width:100%;border-collapse:collapse;">
+                  <tr><td style="padding:7px 0;color:#666;border-bottom:1px solid #eee;">Name</td><td style="padding:7px 0;text-align:right;font-weight:600;border-bottom:1px solid #eee;">${name}</td></tr>
+                  <tr><td style="padding:7px 0;color:#666;border-bottom:1px solid #eee;">Phone</td><td style="padding:7px 0;text-align:right;font-weight:600;border-bottom:1px solid #eee;"><a href="tel:${phone}">${phone}</a></td></tr>
+                  <tr><td style="padding:7px 0;color:#666;border-bottom:1px solid #eee;">Email</td><td style="padding:7px 0;text-align:right;font-weight:600;border-bottom:1px solid #eee;">${email}</td></tr>
+                  <tr><td style="padding:7px 0;color:#666;border-bottom:1px solid #eee;">Address</td><td style="padding:7px 0;text-align:right;font-weight:600;border-bottom:1px solid #eee;">${address}, ${postcode}</td></tr>
+                  <tr><td style="padding:7px 0;color:#666;border-bottom:1px solid #eee;">Vehicle</td><td style="padding:7px 0;text-align:right;font-weight:600;border-bottom:1px solid #eee;">${vehicle}</td></tr>
+                  <tr><td style="padding:7px 0;color:#666;border-bottom:1px solid #eee;">Reg</td><td style="padding:7px 0;text-align:right;font-weight:600;border-bottom:1px solid #eee;">${reg}</td></tr>
+                  <tr><td style="padding:7px 0;color:#666;border-bottom:1px solid #eee;">Quote</td><td style="padding:7px 0;text-align:right;font-weight:600;border-bottom:1px solid #eee;">£${quote}</td></tr>
+                  <tr><td style="padding:7px 0;color:#666;border-bottom:1px solid #eee;">Driveable</td><td style="padding:7px 0;text-align:right;font-weight:600;border-bottom:1px solid #eee;">${radioState.driveable || '—'}</td></tr>
+                  <tr><td style="padding:7px 0;color:#666;border-bottom:1px solid #eee;">V5</td><td style="padding:7px 0;text-align:right;font-weight:600;border-bottom:1px solid #eee;">${radioState.v5 || '—'}</td></tr>
+                  <tr><td style="padding:7px 0;color:#666;border-bottom:1px solid #eee;">Keys</td><td style="padding:7px 0;text-align:right;font-weight:600;border-bottom:1px solid #eee;">${radioState.keys || '—'}</td></tr>
+                  <tr><td style="padding:7px 0;color:#666;">Notes</td><td style="padding:7px 0;text-align:right;font-weight:600;">${notes || '—'}</td></tr>
+                </table>
+              </div>
+            </div>
+          `
+        })
+      });
+    } catch(e) { console.warn('Email failed', e); }
+
     document.getElementById('formSection').style.display = 'none';
     document.getElementById('successName').textContent = name.split(' ')[0];
     document.getElementById('successBox').classList.add('show');
