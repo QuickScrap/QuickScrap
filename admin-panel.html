@@ -465,7 +465,7 @@ let leads    = [];
 let bookings = [];
 
 // ── INIT ──────────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', async () => {
+async function initAdmin() {
   const apiEl = document.getElementById('apiKeyInput');
   const notifyEl = document.getElementById('notifyEmail');
   if (apiEl) apiEl.value = localStorage.getItem('sk_apikey')||'';
@@ -475,7 +475,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   renderPCs();
   renderLeads();
   renderBookings();
-});
+}
+// Works whether DOMContentLoaded has already fired or not (Squarespace code blocks run late)
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAdmin);
+} else {
+  initAdmin();
+}
 
 // ── STATS ─────────────────────────────────────────────────────────
 function renderStats() {
