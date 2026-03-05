@@ -305,7 +305,7 @@ async function sendQuoteEmail(email, data) {
 async function fetchVehicle(reg) {
   const key = getApiKey();
   if (!key) return mockVehicle(reg);
-  const url = `https://uk1.ukvehicledata.co.uk/api/datapackage/VehicleData?v=2&auth_apikey=${key}&user_tag=&key_vrm=${reg}`;
+  const url = `https://quickscrap-proxy.spring-fog-4db0.workers.dev/?vrm=${reg}&key=${key}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('Vehicle lookup failed. Please check your registration.');
   const json = await res.json();
