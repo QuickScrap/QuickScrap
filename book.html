@@ -200,6 +200,7 @@ async function submitBooking() {
   const btn = document.getElementById('btnSubmit');
   btn.disabled = true; btn.textContent = 'Submitting...';
   try {
+    const p = new URLSearchParams(window.location.search);
     const res = await supaPost('bookings', {
       name, phone, email, address,
       postcode: postcode || p.get('postcode') || null,
@@ -214,7 +215,6 @@ async function submitBooking() {
     if (!res.ok) throw new Error('Save failed');
 
     // Send confirmation emails
-    const p = new URLSearchParams(window.location.search);
     const vehicle = p.get('vehicle') || 'Vehicle';
     const quote = p.get('amt') || '—';
     const reg = p.get('reg') || '—';
