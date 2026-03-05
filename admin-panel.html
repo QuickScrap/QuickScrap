@@ -62,6 +62,17 @@
   #qs-admin-root .bulk-btn { background: transparent; border: 1px solid #4a4a4a; color: #999; font-size: .7rem; padding: 4px 8px; cursor: pointer; font-family: 'Epilogue', sans-serif; transition: all .15s; }
   #qs-admin-root .bulk-btn.on:hover { border-color: #2ecc71; color: #2ecc71; }
   #qs-admin-root .bulk-btn.off:hover { border-color: #e74c3c; color: #e74c3c; }
+  #qs-admin-root .bulk-btn.auto { border-color: #FFD21F; color: #FFD21F; }
+  #qs-admin-root .bulk-btn.auto:hover { background: #FFD21F; color: #383838; }
+  #qs-admin-root .auto-price-bar { display: none; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,210,31,.06); border-top: 1px solid #4a4a4a; border-bottom: 1px solid #4a4a4a; }
+  #qs-admin-root .auto-price-bar.show { display: flex; }
+  #qs-admin-root .auto-price-bar label { font-size: .72rem; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: #FFD21F; white-space: nowrap; margin: 0; }
+  #qs-admin-root .auto-price-input { background: #2e2e2e; border: 1.5px solid #FFD21F; color: #F4F4F3; font-family: 'Epilogue', sans-serif; font-size: .9rem; padding: 6px 10px; width: 90px; outline: none; text-align: center; }
+  #qs-admin-root .auto-price-hint { font-size: .75rem; color: #666; flex: 1; }
+  #qs-admin-root .auto-price-apply { background: #FFD21F; color: #383838; border: none; padding: 7px 14px; font-family: 'Anton', sans-serif; font-size: .78rem; letter-spacing: 1px; cursor: pointer; white-space: nowrap; }
+  #qs-admin-root .auto-price-apply:hover { background: #fff; }
+  #qs-admin-root .auto-price-cancel { background: transparent; border: 1px solid #4a4a4a; color: #999; padding: 7px 10px; font-family: 'Epilogue', sans-serif; font-size: .78rem; cursor: pointer; }
+  #qs-admin-root .auto-price-cancel:hover { border-color: #999; color: #F4F4F3; }
   #qs-admin-root .pc-group-body { display: none; border-top: 1px solid #4a4a4a; }
   #qs-admin-root .pc-group.open .pc-group-body { display: block; }
   #qs-admin-root .pc-district-row { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid #333; }
@@ -490,9 +501,17 @@ function renderPCs(filter) {
           <div class="bulk-btns" onclick="event.stopPropagation()">
             <button class="bulk-btn on"  onclick="bulkToggle('${code}', true)">All On</button>
             <button class="bulk-btn off" onclick="bulkToggle('${code}', false)">All Off</button>
+            <button class="bulk-btn auto" onclick="toggleAutoPriceBar('${code}', event)">⚡ Auto Price</button>
           </div>
           <div class="pc-group-arrow">▼</div>
         </div>
+      </div>
+      <div class="auto-price-bar" id="auto-bar-${code}">
+        <label>£</label>
+        <input class="auto-price-input" id="auto-input-${code}" type="number" min="10" max="9999" placeholder="e.g. 180" />
+        <span class="auto-price-hint">per tonne — fills all <strong style="color:#F4F4F3;">${code}</strong> districts at once</span>
+        <button class="auto-price-apply" onclick="applyAutoPrice('${code}')">Apply to All</button>
+        <button class="auto-price-cancel" onclick="closeAutoPriceBar('${code}')">✕</button>
       </div>
       <div class="pc-group-body">
         ${districts.map(d => `
@@ -574,6 +593,49 @@ function bulkToggle(code, on) {
   });
   refreshGroupHeader(code);
   renderStats();
+}
+
+function toggleAutoPriceBar(code, event) {
+  event.stopPropagation();
+  // Open the group first if not already open
+  const grp = document.getElementById('grp-' + code);
+  if (grp && !grp.classList.contains('open')) grp.classList.add('open');
+  const bar = document.getElementById('auto-bar-' + code);
+  if (!bar) return;
+  const isShowing = bar.classList.contains('show');
+  // Close all other open bars first
+  document.querySelectorAll('.auto-price-bar.show').forEach(b => b.classList.remove('show'));
+  if (!isShowing) {
+    bar.classList.add('show');
+    setTimeout(() => { const inp = document.getElementById('auto-input-' + code); if (inp) inp.focus(); }, 50);
+  }
+}
+
+function closeAutoPriceBar(code) {
+  const bar = document.getElementById('auto-bar-' + code);
+  if (bar) bar.classList.remove('show');
+}
+
+function applyAutoPrice(code) {
+  const inp = document.getElementById('auto-input-' + code);
+  const val = parseFloat(inp?.value);
+  if (!val || val < 10) { inp && (inp.style.borderColor = '#e74c3c'); setTimeout(() => { if(inp) inp.style.borderColor = '#FFD21F'; }, 1000); return; }
+  let count = 0;
+  pcs.forEach((p, i) => {
+    if (getAreaCode(p.prefix) === code) {
+      pcs[i].pricePerTon = val;
+      // Update the visible input in the row
+      const row = document.getElementById('row-' + i);
+      if (row) {
+        const priceInp = row.querySelector('.dist-price-input');
+        if (priceInp) priceInp.value = val;
+      }
+      count++;
+    }
+  });
+  closeAutoPriceBar(code);
+  if (inp) inp.value = '';
+  toast(`£${val}/t applied to all ${count} ${code} districts`);
 }
 
 function filterGroups(val) {
