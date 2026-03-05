@@ -20,7 +20,7 @@
   #qs-admin-root .admin-tag { font-size: .75rem; color: #999; letter-spacing: 1px; text-transform: uppercase; margin-left: 10px; }
   #qs-admin-root .topbar-right { display: flex; gap: 10px; align-items: center; }
   #qs-admin-root .wrap { max-width: 960px; margin: 0 auto; padding: 32px 24px 80px; }
-  #qs-admin-root .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 28px; }
+  #qs-admin-root .stats { display: grid; grid-template-columns: repeat(5,1fr); gap: 14px; margin-bottom: 28px; }
   #qs-admin-root .stat { background: #383838; padding: 20px; border-left: 4px solid #FFD21F; }
   #qs-admin-root .stat .num { font-family: 'Anton', sans-serif; font-size: 2rem; color: #FFD21F; line-height: 1; }
   #qs-admin-root .stat .lbl { font-size: .75rem; color: #999; letter-spacing: 1px; text-transform: uppercase; margin-top: 5px; }
@@ -109,143 +109,174 @@
     #qs-admin-root .stats { grid-template-columns: 1fr 1fr; }
     #qs-admin-root .topbar-right .btn span { display: none; }
   }
+
+  #qs-admin-root .tab-nav { background: #383838; border-bottom: 3px solid #FFD21F; display: flex; gap: 0; overflow-x: auto; position: sticky; top: 0; z-index: 100; }
+  #qs-admin-root .tab-btn { background: transparent; border: none; color: #999; font-family: 'Epilogue', sans-serif; font-size: .85rem; font-weight: 600; padding: 16px 20px; cursor: pointer; white-space: nowrap; border-bottom: 3px solid transparent; margin-bottom: -3px; transition: all .15s; }
+  #qs-admin-root .tab-btn:hover { color: #F4F4F3; background: rgba(255,255,255,.05); }
+  #qs-admin-root .tab-btn.active { color: #FFD21F; border-bottom-color: #FFD21F; }
+  #qs-admin-root .tab-content { display: none; }
+  #qs-admin-root .tab-content.active { display: block; }
+  #qs-admin-root .filter-bar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  #qs-admin-root .filter-input { flex: 1; min-width: 200px; background: #2e2e2e; border: 1.5px solid #4a4a4a; color: #F4F4F3; font-family: 'Epilogue', sans-serif; font-size: .85rem; padding: 9px 13px; outline: none; }
+  #qs-admin-root .filter-input:focus { border-color: #FFD21F; }
+  #qs-admin-root .filter-input::placeholder { color: #555; }
+  #qs-admin-root .filter-select { background: #2e2e2e; border: 1.5px solid #4a4a4a; color: #F4F4F3; font-family: 'Epilogue', sans-serif; font-size: .85rem; padding: 9px 13px; outline: none; cursor: pointer; }
+  #qs-admin-root .filter-select:focus { border-color: #FFD21F; }
+  #qs-admin-root .filter-count { font-size: .78rem; color: #666; white-space: nowrap; }
+  #qs-admin-root .status-badge { display: inline-block; padding: 3px 9px; font-size: .7rem; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; border-radius: 2px; cursor: pointer; user-select: none; white-space: nowrap; }
+  #qs-admin-root .status-new        { background: rgba(52,152,219,.15); color: #5dade2; border: 1px solid #5dade2; }
+  #qs-admin-root .status-contacted  { background: rgba(243,156,18,.12); color: #f0b93a; border: 1px solid #f0b93a; }
+  #qs-admin-root .status-confirmed  { background: rgba(155,89,182,.15); color: #c39bd3; border: 1px solid #c39bd3; }
+  #qs-admin-root .status-completed  { background: rgba(46,204,113,.12); color: #2ecc71; border: 1px solid #2ecc71; }
+  #qs-admin-root .status-cancelled  { background: rgba(231,76,60,.1);  color: #e74c3c; border: 1px solid #e74c3c; }
+  #qs-admin-root .stat.highlight { border-left-color: #2ecc71; }
+  #qs-admin-root .stat.highlight .num { color: #2ecc71; }
 </style>
 </head>
 <body>
 <div id="qs-admin-root">
-<div class="topbar">
-  <div style="display:flex;align-items:center;">
-    <div class="logo">QUICK<span>SCRAP</span></div>
-    <span class="admin-tag">/ Admin</span>
-  </div>
-  <div class="topbar-right">
-    <button class="btn outline sm" onclick="exportCSV()">⬇ Export CSV</button>
-    <button class="btn outline sm" onclick="exportSettings()">⬇ Settings</button>
-  </div>
+
+<!-- TAB NAV -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+  <button class="tab-btn" onclick="switchTab('leads')">📋 Leads</button>
+  <button class="tab-btn" onclick="switchTab('bookings')">📅 Bookings</button>
+  <button class="tab-btn" onclick="switchTab('postcodes')">📍 Postcodes</button>
+  <button class="tab-btn" onclick="switchTab('settings')">⚙️ Settings</button>
 </div>
 
 <div class="wrap">
 
-  <!-- STATS -->
-  <div class="stats">
-    <div class="stat"><div class="num" id="sTotalLeads">0</div><div class="lbl">Total Leads</div></div>
-    <div class="stat"><div class="num" id="sToday">0</div><div class="lbl">Today</div></div>
-    <div class="stat"><div class="num" id="sAvgQuote">£0</div><div class="lbl">Avg Quote</div></div>
-    <div class="stat"><div class="num" id="sActiveZones">0</div><div class="lbl">Active Zones</div></div>
-  </div>
-
-  <!-- API KEY -->
-  <div class="section">
-    <div class="section-title">UKVehicleData API Key</div>
-    <div class="section-desc">
-      Get your key at <strong style="color:#F4F4F3;">ukvehicledata.co.uk</strong>. Once saved, the widget switches from demo mode to live vehicle lookups automatically.
+  <!-- DASHBOARD TAB -->
+  <div class="tab-content active" id="tab-dashboard">
+    <div class="stats">
+      <div class="stat"><div class="num" id="sTotalLeads">0</div><div class="lbl">Total Leads</div></div>
+      <div class="stat"><div class="num" id="sToday">0</div><div class="lbl">Today</div></div>
+      <div class="stat"><div class="num" id="sAvgQuote">£0</div><div class="lbl">Avg Quote</div></div>
+      <div class="stat"><div class="num" id="sActiveZones">0</div><div class="lbl">Active Zones</div></div>
+      <div class="stat highlight"><div class="num" id="sConversion">0%</div><div class="lbl">Conversion Rate</div></div>
     </div>
-    <div class="field-row">
-      <input class="field" id="apiKeyInput" type="text" placeholder="Paste your API key here" />
-      <button class="btn" onclick="saveApiKey()">Save</button>
-    </div>
-    <div class="imsg" id="apiMsg"></div>
-  </div>
-
-  <!-- EMAIL -->
-  <div class="section">
-    <div class="section-title">Quote Email Setup</div>
-    <div class="section-desc">
-      Customer quote emails are currently logged to browser console. To send real emails, integrate <strong style="color:#F4F4F3;">EmailJS</strong> (free, no backend needed) or <strong style="color:#F4F4F3;">Formspree</strong>. Instructions are in the widget code comments. Save your notification email below.
-    </div>
-    <div class="field-row">
-      <input class="field" id="notifyEmail" type="email" placeholder="your@email.com — for your own lead notifications" />
-      <button class="btn" onclick="saveNotify()">Save</button>
-    </div>
-    <div class="imsg" id="emailMsg"></div>
-  </div>
-
-  <!-- POSTCODE PRICING -->
-  <div class="section">
-    <div class="section-title">Postcode Coverage & Pricing</div>
-    <div class="section-desc">
-      Formula: <strong style="color:#F4F4F3;">Vehicle weight (kg) ÷ 1000 × £ per tonne = Quote</strong>.
-      Click an area to expand its districts. Toggle individual districts on/off and set a price per tonne for each. The customer never sees the price per tonne.
-    </div>
-
-    <!-- search -->
-    <div style="margin-bottom:14px;">
-      <input class="field" id="pcSearch" type="text" placeholder="Search postcode or area name... (e.g. TR, Cornwall, SK14)" oninput="filterGroups(this.value)" style="max-width:360px;" />
-    </div>
-
-    <div id="pcGroups"></div>
-
-    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-      <button class="btn" onclick="savePostcodes()">Save All Changes</button>
-      <button class="btn outline" onclick="reseedAll()">🔄 Fix Missing Postcodes</button>
-      <button class="btn outline" onclick="showPreview()">Preview Active Districts</button>
-    </div>
-
-    <div class="preview-box" id="previewBox">
-      <h4>Active Districts — example 1,200 kg car</h4>
-      <div id="previewRows"></div>
-    </div>
-
-    <div class="imsg" id="pcMsg"></div>
-  </div>
-
-  <!-- LEADS -->
-  <div class="section">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-      <div class="section-title" style="margin-bottom:0;">Leads Received</div>
-      <button class="btn danger sm" onclick="clearLeads()">Clear All</button>
-    </div>
-    <div class="tbl-wrap">
-      <table class="leads-table">
-        <thead>
-          <tr>
-            <th>Date</th><th>Time</th><th>Name</th><th>Phone</th><th>Email</th>
-            <th>Reg</th><th>Vehicle</th><th>Postcode</th><th>Area</th><th>Weight</th><th>Quote</th>
-          </tr>
-        </thead>
-        <tbody id="leadsBody"></tbody>
-      </table>
-      <div class="empty" id="emptyLeads">No leads yet — quotes submitted on your site will appear here.</div>
+    <div class="section">
+      <div class="section-title">Quick Actions</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
+        <button class="btn outline" onclick="switchTab('leads')">View Leads →</button>
+        <button class="btn outline" onclick="switchTab('bookings')">View Bookings →</button>
+        <button class="btn outline" onclick="exportCSV()">⬇ Export CSV</button>
+      </div>
     </div>
   </div>
 
-
-  <!-- BOOKINGS -->
-  <div class="section">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-      <div class="section-title" style="margin-bottom:0;">Collection Bookings</div>
-      <button class="btn danger sm" onclick="clearBookings()">Clear All</button>
-    </div>
-    <div class="tbl-wrap">
-      <table class="leads-table">
-        <thead>
-          <tr>
-            <th>Date</th><th>Name</th><th>Phone</th><th>Email</th>
-            <th>Address</th><th>Postcode</th><th>Reg</th><th>Quote</th>
-            <th>Driveable</th><th>V5</th><th>Keys</th><th>Notes</th>
-          </tr>
-        </thead>
-        <tbody id="bookingsBody"></tbody>
-      </table>
-      <div class="empty" id="emptyBookings">No bookings yet — they will appear here when customers complete the booking form.</div>
+  <!-- LEADS TAB -->
+  <div class="tab-content" id="tab-leads">
+    <div class="section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div class="section-title" style="margin-bottom:0;">Leads Received</div>
+        <button class="btn danger sm" onclick="clearLeads()">Clear All</button>
+      </div>
+      <div class="filter-bar">
+        <input class="filter-input" id="leadsSearch" type="text" placeholder="🔍  Search name, reg, postcode, email..." oninput="renderLeads()" />
+        <span class="filter-count" id="leadsCount"></span>
+      </div>
+      <div class="tbl-wrap">
+        <table class="leads-table">
+          <thead>
+            <tr>
+              <th>Date</th><th>Time</th><th>Name</th><th>Phone</th><th>Email</th>
+              <th>Reg</th><th>Vehicle</th><th>Postcode</th><th>Area</th><th>Weight</th><th>Quote</th>
+            </tr>
+          </thead>
+          <tbody id="leadsBody"></tbody>
+        </table>
+        <div class="empty" id="emptyLeads">No leads yet — quotes submitted on your site will appear here.</div>
+      </div>
     </div>
   </div>
 
-  <!-- BACKUP -->
-  <div class="section">
-    <div class="section-title">Settings Backup</div>
-    <div class="section-desc">Export your postcode settings to back up or transfer to another device.</div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      <button class="btn outline" onclick="exportSettings()">⬇ Export JSON</button>
-      <label class="btn outline" style="cursor:pointer;">
-        ⬆ Import JSON
-        <input type="file" accept=".json" onchange="importSettings(event)" style="display:none;" />
-      </label>
+  <!-- BOOKINGS TAB -->
+  <div class="tab-content" id="tab-bookings">
+    <div class="section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div class="section-title" style="margin-bottom:0;">Collection Bookings</div>
+        <button class="btn danger sm" onclick="clearBookings()">Clear All</button>
+      </div>
+      <div class="filter-bar">
+        <input class="filter-input" id="bookingsSearch" type="text" placeholder="🔍  Search name, reg, postcode, email..." oninput="renderBookings()" />
+        <select class="filter-select" id="bookingsStatusFilter" onchange="renderBookings()">
+          <option value="">All Statuses</option>
+          <option value="new">New</option>
+          <option value="contacted">Contacted</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <span class="filter-count" id="bookingsCount"></span>
+      </div>
+      <div class="tbl-wrap">
+        <table class="leads-table">
+          <thead>
+            <tr>
+              <th>Date</th><th>Status</th><th>Name</th><th>Phone</th><th>Email</th>
+              <th>Address</th><th>Postcode</th><th>Reg</th><th>Quote</th>
+              <th>Driveable</th><th>V5</th><th>Keys</th><th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="bookingsBody"></tbody>
+        </table>
+        <div class="empty" id="emptyBookings">No bookings yet — they will appear here when customers complete the booking form.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POSTCODES TAB -->
+  <div class="tab-content" id="tab-postcodes">
+    <div class="section">
+      <div class="section-title">Postcode Coverage & Pricing</div>
+      <div class="section-desc">
+        Formula: <strong style="color:#F4F4F3;">Vehicle weight (kg) ÷ 1000 × £ per tonne = Quote</strong>.
+        Click an area to expand its districts. Toggle individual districts on/off and set a price per tonne for each.
+      </div>
+      <div style="margin-bottom:14px;">
+        <input class="field" id="pcSearch" type="text" placeholder="Search postcode or area name... (e.g. TR, Cornwall, SK14)" oninput="filterGroups(this.value)" style="max-width:360px;" />
+      </div>
+      <div id="pcGroups"></div>
+      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <button class="btn" onclick="savePostcodes()">Save All Changes</button>
+        <button class="btn outline" onclick="reseedAll()">🔄 Fix Missing Postcodes</button>
+        <button class="btn outline" onclick="showPreview()">Preview Active Districts</button>
+      </div>
+      <div class="preview-box" id="previewBox">
+        <h4>Active Districts — example 1,200 kg car</h4>
+        <div id="previewRows"></div>
+      </div>
+      <div class="imsg" id="pcMsg"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div class="tab-content" id="tab-settings">
+    <div class="section">
+      <div class="section-title">Vehicle Data API Key</div>
+      <div class="section-desc">Your Vehicle Data Global API key for live vehicle lookups.</div>
+      <div class="field-row">
+        <input class="field" id="apiKeyInput" type="text" placeholder="Paste your API key here" />
+        <button class="btn" onclick="saveApiKey()">Save</button>
+      </div>
+      <div class="imsg" id="apiMsg"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">Settings Backup</div>
+      <div class="section-desc">Export your postcode settings to back up or transfer to another device.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn outline" onclick="exportSettings()">⬇ Export JSON</button>
+        <label class="btn outline" style="cursor:pointer;">
+          ⬆ Import JSON
+          <input type="file" accept=".json" onchange="importSettings(event)" style="display:none;" />
+        </label>
+      </div>
     </div>
   </div>
 
 </div>
-
 <div class="toast" id="toast"></div>
 </div>
 
@@ -341,6 +372,7 @@ async function loadFromSupabase() {
       name:r.name, phone:r.phone, email:r.email,
       address:r.address, postcode:r.postcode, reg:r.reg,
       quote:r.quote, area:r.area,
+      status: r.status || 'new',
       driveable: r.driveable===true ? '✅ Yes' : r.driveable===false ? '❌ No' : '—',
       has_v5: r.has_v5 || '—',
       has_keys: r.has_keys===true ? '✅ Yes' : r.has_keys===false ? '❌ No' : '—',
@@ -388,6 +420,8 @@ function renderStats() {
   document.getElementById('sAvgQuote').textContent   = leads.length
     ? '£'+Math.round(leads.reduce((s,l)=>s+(l.quote||0),0)/leads.length) : '£0';
   document.getElementById('sActiveZones').textContent = pcs.filter(p=>p.served).length;
+  const convRate = leads.length ? Math.round((bookings.length / leads.length) * 100) : 0;
+  document.getElementById('sConversion').textContent = convRate + '%';
 }
 
 // ── API KEY ───────────────────────────────────────────────────────
@@ -586,9 +620,31 @@ function showPreview() {
 function renderLeads() {
   const tbody = document.getElementById('leadsBody');
   const empty = document.getElementById('emptyLeads');
-  if (!leads.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
+  const search = (document.getElementById('leadsSearch')?.value || '').toLowerCase().trim();
+
+  let filtered = leads;
+  if (search) {
+    filtered = leads.filter(l =>
+      (l.name||'').toLowerCase().includes(search) ||
+      (l.reg||'').toLowerCase().includes(search) ||
+      (l.postcode||'').toLowerCase().includes(search) ||
+      (l.email||'').toLowerCase().includes(search) ||
+      (l.phone||'').toLowerCase().includes(search) ||
+      (l.area||'').toLowerCase().includes(search)
+    );
+  }
+
+  const countEl = document.getElementById('leadsCount');
+  if (countEl) countEl.textContent = search ? `${filtered.length} of ${leads.length} leads` : `${leads.length} leads`;
+
+  if (!filtered.length) {
+    tbody.innerHTML='';
+    empty.style.display='block';
+    empty.textContent = search ? 'No leads match your search.' : 'No leads yet — quotes submitted on your site will appear here.';
+    return;
+  }
   empty.style.display='none';
-  tbody.innerHTML = leads.map(l=>`
+  tbody.innerHTML = filtered.map(l=>`
     <tr>
       <td>${l.date||'—'}</td>
       <td>${l.time||'—'}</td>
@@ -622,14 +678,74 @@ function exportCSV() {
 }
 
 // ── BOOKINGS ──────────────────────────────────────────────────────
+const STATUS_CYCLE = ['new','contacted','confirmed','completed','cancelled'];
+const STATUS_LABELS = {new:'New',contacted:'Contacted',confirmed:'Confirmed',completed:'Completed',cancelled:'Cancelled'};
+
+async function updateBookingStatus(id, newStatus) {
+  // Update in local array
+  const b = bookings.find(b=>b.id===id);
+  if (b) b.status = newStatus;
+  // Persist to Supabase
+  try {
+    await fetch(SUPA_URL+'/rest/v1/bookings?id=eq.'+id, {
+      method: 'PATCH',
+      headers: {apikey:SUPA_KEY, Authorization:'Bearer '+SUPA_KEY, 'Content-Type':'application/json', Prefer:'return=minimal'},
+      body: JSON.stringify({status: newStatus})
+    });
+  } catch(e) { console.error('Status update failed', e); }
+  renderBookings();
+  renderStats();
+  toast('Status updated: ' + STATUS_LABELS[newStatus]);
+}
+
+function cycleStatus(id) {
+  const b = bookings.find(b=>b.id===id);
+  if (!b) return;
+  const curr = b.status || 'new';
+  const nextIdx = (STATUS_CYCLE.indexOf(curr) + 1) % STATUS_CYCLE.length;
+  updateBookingStatus(id, STATUS_CYCLE[nextIdx]);
+}
+
+function statusBadge(id, status) {
+  const s = status || 'new';
+  return `<span class="status-badge status-${s}" onclick="cycleStatus(${id})" title="Click to change status">${STATUS_LABELS[s]}</span>`;
+}
+
 function renderBookings() {
   const tbody = document.getElementById('bookingsBody');
   const empty = document.getElementById('emptyBookings');
-  if (!bookings.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
+  const search = (document.getElementById('bookingsSearch')?.value || '').toLowerCase().trim();
+  const statusFilter = document.getElementById('bookingsStatusFilter')?.value || '';
+
+  let filtered = bookings;
+  if (search) {
+    filtered = filtered.filter(b =>
+      (b.name||'').toLowerCase().includes(search) ||
+      (b.reg||'').toLowerCase().includes(search) ||
+      (b.postcode||'').toLowerCase().includes(search) ||
+      (b.email||'').toLowerCase().includes(search) ||
+      (b.phone||'').toLowerCase().includes(search) ||
+      (b.address||'').toLowerCase().includes(search)
+    );
+  }
+  if (statusFilter) {
+    filtered = filtered.filter(b => (b.status||'new') === statusFilter);
+  }
+
+  const countEl = document.getElementById('bookingsCount');
+  if (countEl) countEl.textContent = (search||statusFilter) ? `${filtered.length} of ${bookings.length} bookings` : `${bookings.length} bookings`;
+
+  if (!filtered.length) {
+    tbody.innerHTML='';
+    empty.style.display='block';
+    empty.textContent = (search||statusFilter) ? 'No bookings match your filter.' : 'No bookings yet — they will appear here when customers complete the booking form.';
+    return;
+  }
   empty.style.display='none';
-  tbody.innerHTML = bookings.map(b=>`
+  tbody.innerHTML = filtered.map(b=>`
     <tr>
       <td>${b.date||'—'}</td>
+      <td>${statusBadge(b.id, b.status)}</td>
       <td><strong style="color:#F4F4F3;">${b.name||'—'}</strong></td>
       <td>${b.phone||'—'}</td>
       <td>${b.email||'—'}</td>
@@ -710,6 +826,15 @@ function today() { return new Date().toISOString().slice(0,10); }
     new MutationObserver(sendHeight).observe(document.body, { subtree: true, childList: true, attributes: true });
   }
 })();
+
+function switchTab(name) {
+  document.querySelectorAll('#qs-admin-root .tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#qs-admin-root .tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelectorAll('#qs-admin-root .tab-btn').forEach(b => {
+    if (b.getAttribute('onclick') === "switchTab('" + name + "')") b.classList.add('active');
+  });
+}
 </script>
 </body>
 </html>
