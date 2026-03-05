@@ -200,7 +200,6 @@ async function submitBooking() {
   const btn = document.getElementById('btnSubmit');
   btn.disabled = true; btn.textContent = 'Submitting...';
   try {
-    const p = new URLSearchParams(window.location.search);
     const res = await supaPost('bookings', {
       name, phone, email, address,
       postcode: postcode || p.get('postcode') || null,
