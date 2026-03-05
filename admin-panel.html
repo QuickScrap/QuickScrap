@@ -297,14 +297,15 @@ const SUPA_URL = 'https://rwqjfjhgdgwhatgrcedt.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3cWpmamhnZGd3aGF0Z3JjZWR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MjIyMDIsImV4cCI6MjA4ODE5ODIwMn0.gPP167Bbe4z_KhZ82_Q7-k-mlFz0m3aG4VmxXjDlGc8';
 
 async function supaFetch(table, params) {
-  // Paginate to get all rows (Supabase defaults to 1000 max)
+  // Strip duplicate limit/offset params, then paginate
+  const cleanParams = (params || '').replace(/&?limit=\d+/g, '').replace(/&?offset=\d+/g, '');
   let all = [];
   let offset = 0;
   const pageSize = 1000;
   while (true) {
-    const p = (params ? params + '&' : '') + 'limit=' + pageSize + '&offset=' + offset;
+    const p = (cleanParams ? cleanParams + '&' : '') + 'limit=' + pageSize + '&offset=' + offset;
     const url = SUPA_URL+'/rest/v1/'+table+'?'+p;
-    const res = await fetch(url, {headers:{apikey:SUPA_KEY, Authorization:'Bearer '+SUPA_KEY, 'Range-Unit':'items', 'Prefer':'count=none'}});
+    const res = await fetch(url, {headers:{apikey:SUPA_KEY, Authorization:'Bearer '+SUPA_KEY, 'Prefer':'count=none'}});
     if (!res.ok) throw new Error(await res.text());
     const page = await res.json();
     all = all.concat(page);
@@ -347,7 +348,7 @@ async function reseedAll() {
   try {
     toast("Seeding all UK districts — please wait ~30 seconds...");
     await seedPostcodes();
-    const fresh = await supaFetch("postcodes","select=prefix,area,price_per_ton,served&order=prefix&limit=3000");
+    const fresh = await supaFetch("postcodes","select=prefix,area,price_per_ton,served&order=prefix");
     pcs = fresh.map(r=>({prefix:r.prefix,area:r.area,pricePerTon:r.price_per_ton,served:r.served}));
     renderPCs(); renderStats();
     toast("All " + pcs.length + " districts loaded!");
@@ -362,7 +363,7 @@ async function reseedAll() {
 async function loadFromSupabase() {
   try {
     const [pcData, leadData, bookingData] = await Promise.all([
-      supaFetch('postcodes','select=prefix,area,price_per_ton,served&order=prefix&limit=3000'),
+      supaFetch('postcodes','select=prefix,area,price_per_ton,served&order=prefix'),
       supaFetch('leads','select=*&order=created_at.desc'),
       supaFetch('bookings','select=*&order=created_at.desc')
     ]);
@@ -393,13 +394,15 @@ async function loadFromSupabase() {
     if (pcs.length === 0) {
       toast('Seeding UK postcode districts into database — please wait...');
       await seedPostcodes();
-      const fresh = await supaFetch('postcodes','select=prefix,area,price_per_ton,served&order=prefix&limit=3000');
+      const fresh = await supaFetch('postcodes','select=prefix,area,price_per_ton,served&order=prefix');
       pcs = fresh.map(r=>({prefix:r.prefix,area:r.area,pricePerTon:r.price_per_ton,served:r.served}));
       toast('All UK districts loaded — toggle on the areas you cover and save.');
     }
   } catch(e) {
     console.error('Supabase load failed:', e);
-    toast('Could not connect to database',true);
+    console.error('Supabase error:', e);
+    imsg('pcMsg', '⚠ Could not load data from database: ' + e.message + ' — check your internet connection and reload.', 'err');
+    toast('Could not connect to database', true);
   }
 }
 
