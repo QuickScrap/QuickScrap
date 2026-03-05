@@ -312,14 +312,19 @@ async function fetchVehicle(reg) {
   if (!json.ResponseInformation?.IsSuccessStatusCode) throw new Error('Vehicle not found — please check the reg plate.');
   const vi = json.Results?.VehicleDetails?.VehicleIdentification || {};
   const td = json.Results?.VehicleDetails?.DvlaTechnicalDetails || {};
-  const cc = td.EngineCapacityCc;
+  const md = json.Results?.ModelDetails || {};
+  const wt = md.Weights || {};
+  const pt = md.Powertrain || {};
+  const ice = pt.IceDetails || {};
+  const cc = ice.EngineCapacityCc || td.EngineCapacityCc;
+  const weight = wt.KerbWeightKg || td.MassInServiceKg || td.GrossWeightKg || 1100;
   return {
-    make: vi.DvlaMake || 'Unknown',
-    model: vi.DvlaModel || 'Unknown',
+    make: md.ModelIdentification?.Make || vi.DvlaMake || 'Unknown',
+    model: md.ModelIdentification?.Model || vi.DvlaModel || 'Unknown',
     year: vi.YearOfManufacture || '—',
-    fuel: vi.DvlaFuelType || '—',
+    fuel: pt.FuelType || vi.DvlaFuelType || '—',
     engine: cc ? `${(cc/1000).toFixed(1)}L` : '—',
-    weight: td.MassInServiceKg || td.GrossWeightKg || 1100,
+    weight,
   };
 }
 
