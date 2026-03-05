@@ -309,15 +309,17 @@ async function fetchVehicle(reg) {
   const res = await fetch(url);
   if (!res.ok) throw new Error('Vehicle lookup failed. Please check your registration.');
   const json = await res.json();
-  if (json.Response?.StatusCode !== 'Success') throw new Error('Vehicle not found — please check the reg plate.');
-  const vr = json.Response.DataItems?.VehicleRegistration||{};
-  const td = json.Response.DataItems?.TechnicalDetails||{};
-  const sm = json.Response.DataItems?.SmmtDetails||{};
+  if (!json.ResponseInformation?.IsSuccessStatusCode) throw new Error('Vehicle not found — please check the reg plate.');
+  const vi = json.Results?.VehicleDetails?.VehicleIdentification || {};
+  const td = json.Results?.VehicleDetails?.DvlaTechnicalDetails || {};
+  const cc = td.EngineCapacityCc;
   return {
-    make:vr.Make||'Unknown', model:vr.Model||'Unknown', year:vr.YearOfManufacture||vr.ModelYear||'—',
-    fuel:vr.FuelType||td.General?.FuelType||'—',
-    engine:td.Performance?.EngineCapacity?`${(td.Performance.EngineCapacity/1000).toFixed(1)}L`:vr.EngineCapacity?`${(vr.EngineCapacity/1000).toFixed(1)}L`:'—',
-    weight:td.Dimensions?.KerbWeight||td.Weights?.GrossVehicleWeight||sm.MinimumKerbWeight||1100,
+    make: vi.DvlaMake || 'Unknown',
+    model: vi.DvlaModel || 'Unknown',
+    year: vi.YearOfManufacture || '—',
+    fuel: vi.DvlaFuelType || '—',
+    engine: cc ? `${(cc/1000).toFixed(1)}L` : '—',
+    weight: td.MassInServiceKg || td.GrossWeightKg || 1100,
   };
 }
 
