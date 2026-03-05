@@ -506,14 +506,14 @@ function renderPCs(filter) {
           <div class="pc-group-arrow">▼</div>
         </div>
       </div>
-      <div class="auto-price-bar" id="auto-bar-${code}">
-        <label>£</label>
-        <input class="auto-price-input" id="auto-input-${code}" type="number" min="10" max="9999" placeholder="e.g. 180" />
-        <span class="auto-price-hint">per tonne — fills all <strong style="color:#F4F4F3;">${code}</strong> districts at once</span>
-        <button class="auto-price-apply" onclick="applyAutoPrice('${code}')">Apply to All</button>
-        <button class="auto-price-cancel" onclick="closeAutoPriceBar('${code}')">✕</button>
-      </div>
       <div class="pc-group-body">
+        <div class="auto-price-bar" id="auto-bar-${code}">
+          <label>£</label>
+          <input class="auto-price-input" id="auto-input-${code}" type="number" min="10" max="9999" placeholder="e.g. 180" />
+          <span class="auto-price-hint">per tonne — fills all <strong style="color:#F4F4F3;">${code}</strong> districts at once</span>
+          <button class="auto-price-apply" onclick="applyAutoPrice('${code}')">Apply to All</button>
+          <button class="auto-price-cancel" onclick="closeAutoPriceBar('${code}')">✕</button>
+        </div>
         ${districts.map(d => `
           <div class="pc-district-row ${d.served ? 'is-active' : ''}" id="row-${d._idx}">
             <div class="dist-prefix">${d.prefix}</div>
@@ -597,17 +597,15 @@ function bulkToggle(code, on) {
 
 function toggleAutoPriceBar(code, event) {
   event.stopPropagation();
-  // Open the group first if not already open
   const grp = document.getElementById('grp-' + code);
   if (grp && !grp.classList.contains('open')) grp.classList.add('open');
   const bar = document.getElementById('auto-bar-' + code);
   if (!bar) return;
   const isShowing = bar.classList.contains('show');
-  // Close all other open bars first
   document.querySelectorAll('.auto-price-bar.show').forEach(b => b.classList.remove('show'));
   if (!isShowing) {
     bar.classList.add('show');
-    setTimeout(() => { const inp = document.getElementById('auto-input-' + code); if (inp) inp.focus(); }, 50);
+    setTimeout(() => { const inp = document.getElementById('auto-input-' + code); if (inp) inp.focus(); }, 80);
   }
 }
 
