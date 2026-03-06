@@ -1435,13 +1435,11 @@ async function submitManualBooking(mode = "selfbill") {
   msgEl.textContent = mode === 'selfbill' ? '⏳ Saving booking...' : '⏳ Adding booking...';
 
   // Save to Supabase bookings table
-  const weight    = parseFloat(document.getElementById('mbWeight').value) || null;
   const bookingRow = {
     name, phone, email, address, postcode, reg,
-    quote: amount, make, model, year, weight,
+    quote: amount,
     status: mode === 'selfbill' ? 'completed' : 'new',
     notes: notes || null,
-    driveable: null, has_v5: null, has_keys: null
   };
 
   try {
@@ -1456,7 +1454,7 @@ async function submitManualBooking(mode = "selfbill") {
       id: saved[0].id,
       date: new Date().toLocaleDateString('en-GB'),
       name, phone, email, address, postcode, reg,
-      quote: amount, make, model, year,
+      quote: amount,
       status: mode === 'selfbill' ? 'completed' : 'new',
       driveable: '—', has_v5: '—', has_keys: '—',
       notes: notes || '—', rawNotes: notes || '',
