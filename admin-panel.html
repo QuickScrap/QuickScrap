@@ -1482,25 +1482,29 @@ async function submitManualBooking(mode = "selfbill") {
   const has_keys  = document.getElementById('mbHasKeys').checked;
   const bookingRow = {
     name, phone, email, address, postcode, reg,
-    quote: amount,
+    quote: (amount && !isNaN(amount)) ? amount : null,
     status: mode === 'selfbill' ? 'completed' : 'new',
     notes: notes || null,
     driveable, has_v5, has_keys,
   };
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
     const res = await fetch(SUPA_URL + '/rest/v1/bookings', {
       method: 'POST',
       headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-      body: JSON.stringify(bookingRow)
+      body: JSON.stringify(bookingRow),
+      signal: controller.signal
     });
+    clearTimeout(timeout);
     if (!res.ok) throw new Error(await res.text());
     const saved = await res.json();
     const newBooking = {
       id: saved[0].id,
       date: new Date().toLocaleDateString('en-GB'),
       name, phone, email, address, postcode, reg,
-      quote: amount,
+      quote: (amount && !isNaN(amount)) ? amount : 0,
       status: mode === 'selfbill' ? 'completed' : 'new',
       driveable: driveable ? '✅ Yes' : '❌ No',
       has_v5: has_v5 ? '✅ Yes' : '❌ No',
