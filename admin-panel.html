@@ -464,6 +464,7 @@ async function loadFromSupabase() {
       address:r.address, postcode:r.postcode, reg:r.reg,
       quote:r.quote, area:r.area,
       make:r.make||'', model:r.model||'', year:r.year||'',
+      vehicle:r.vehicle||'',
       status: r.status || 'new',
       driveable: r.driveable===true ? '✅ Yes' : r.driveable===false ? '❌ No' : '—',
       has_v5: r.has_v5 || '—',
@@ -879,17 +880,25 @@ const STATUS_CYCLE = ['new','contacted','confirmed','completed','cancelled'];
 const STATUS_LABELS = {new:'New',contacted:'Contacted',confirmed:'Confirmed',completed:'Completed',cancelled:'Cancelled'};
 
 async function updateBookingStatus(id, newStatus) {
-  // Update in local array
   const b = bookings.find(b=>b.id===id);
   if (b) b.status = newStatus;
-  // Persist to Supabase
   try {
-    await fetch(SUPA_URL+'/rest/v1/bookings?id=eq.'+id, {
+    const res = await fetch(SUPA_URL+'/rest/v1/bookings?id=eq.'+id, {
       method: 'PATCH',
-      headers: {apikey:SUPA_KEY, Authorization:'Bearer '+SUPA_KEY, 'Content-Type':'application/json', Prefer:'return=minimal'},
+      headers: {apikey:SUPA_KEY, Authorization:'Bearer '+SUPA_KEY, 'Content-Type':'application/json', Prefer:'return=representation'},
       body: JSON.stringify({status: newStatus})
     });
-  } catch(e) { console.error('Status update failed', e); }
+    if (!res.ok) {
+      const err = await res.text();
+      // If status column missing, suggest fix
+      if (err.includes('status') || err.includes('column')) {
+        toast('⚠ Status column missing in Supabase — add a "status" text column to the bookings table', true);
+      } else {
+        toast('Status save failed: ' + err.slice(0,80), true);
+      }
+      return;
+    }
+  } catch(e) { toast('Status save failed: ' + e.message, true); return; }
   renderBookings();
   renderStats();
   toast('Status updated: ' + STATUS_LABELS[newStatus]);
@@ -904,7 +913,7 @@ function cycleStatus(id) {
   updateBookingStatus(id, newStatus);
   if (newStatus === 'completed') {
     if (confirm('Booking marked as Completed!\n\nGenerate and email self-bill invoice to customer?')) {
-      generateSelfBill(id);
+      generateSelfBill(id, true);
     }
   }
 }
@@ -963,6 +972,7 @@ function renderBookings() {
       <td style="max-width:200px;white-space:normal;font-size:.8rem;">${b.notes}</td>
       <td style="white-space:nowrap;">
         <button class="btn sm outline" onclick="openEditModal(${b.id})" style="margin-bottom:4px;">✏️ Edit</button>
+        <button class="btn sm outline" onclick="generateSelfBill(${b.id})" style="margin-bottom:4px;border-color:#FFD21F;color:#FFD21F;">⬇ Invoice</button>
         <button class="btn sm ${b.archived?'outline':'archive'}" onclick="toggleArchiveBooking(${b.id})">${b.archived?'Unarchive':'Archive'}</button>
       </td>
     </tr>
@@ -1056,7 +1066,7 @@ function padInvoiceNum(id) {
   return 'QS-' + String(id).padStart(5, '0');
 }
 
-async function generateSelfBill(id) {
+async function generateSelfBill(id, sendEmail=false) {
   const b = bookings.find(b=>b.id===id);
   if (!b) { toast('Booking not found', true); return; }
 
@@ -1140,7 +1150,9 @@ async function generateSelfBill(id) {
   ];
 
   // Try to get vehicle name from booking
-  const vehicleDesc = [b.year, b.make, b.model].filter(Boolean).join(' ') || '—';
+  // Look up vehicle details from matching lead by reg
+  const matchingLead = leads.find(l => l.reg && b.reg && l.reg.replace(/\s/g,'').toUpperCase() === b.reg.replace(/\s/g,'').toUpperCase());
+  const vehicleDesc = (matchingLead ? [matchingLead.year, matchingLead.make, matchingLead.model].filter(Boolean).join(' ') : '') || [b.year, b.make, b.model].filter(Boolean).join(' ') || b.vehicle || '—';
   rows[1][1] = vehicleDesc;
 
   rows.forEach((row, i) => {
@@ -1226,7 +1238,7 @@ async function generateSelfBill(id) {
 
   // ── Email to customer ────────────────────────────────────────────
   const email = b.email;
-  if (email) {
+  if (sendEmail && email) {
     try {
       const pdfBase64 = doc.output('datauristring').split(',')[1];
       await fetch('https://quickscrap-proxy.spring-fog-4db0.workers.dev/email', {
