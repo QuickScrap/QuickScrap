@@ -381,6 +381,13 @@
           <div><label>Model</label><input class="field" id="mbModel" type="text" placeholder="Focus" /></div>
           <div><label>Year</label><input class="field" id="mbYear" type="text" placeholder="2015" /></div>
         </div>
+        <div style="margin-top:10px;">
+          <label style="margin-top:0;">Vehicle Weight (kg) <span style="color:#999;font-weight:400;text-transform:none;letter-spacing:0;">— from V5 or auto-filled below</span></label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input class="field" id="mbWeight" type="number" min="100" max="5000" placeholder="e.g. 1150" style="max-width:160px;" oninput="recalcManualQuote()" />
+            <span style="font-size:.78rem;color:#666;">kg</span>
+          </div>
+        </div>
       </div>
       <div id="mbLookupMsg" style="font-size:.78rem;color:#ff8a80;margin-top:6px;"></div>
 
@@ -1293,11 +1300,17 @@ async function manualGenerateQuote() {
         const model = md.ModelIdentification?.Model || vi.DvlaModel || '';
         const year = vi.YearOfManufacture || '';
         const fuel = md.Powertrain?.FuelType || vi.DvlaFuelType || '';
+        // Try to get kerb weight from API
+        const dims = json.Results?.TechnicalDetails?.Dimensions || {};
+        const kerbWeight = dims.KerbWeightMin || dims.KerbWeight || dims.UnladenWeight || null;
         document.getElementById('mbMake').value = make;
         document.getElementById('mbModel').value = model;
         document.getElementById('mbYear').value = year;
+        if (kerbWeight && !isNaN(kerbWeight)) {
+          document.getElementById('mbWeight').value = Math.round(kerbWeight);
+        }
         document.getElementById('mbVehicleName').textContent = [year, make, model].filter(Boolean).join(' ');
-        document.getElementById('mbVehicleDetail').textContent = [fuel, reg].filter(Boolean).join(' · ');
+        document.getElementById('mbVehicleDetail').textContent = [fuel, kerbWeight ? kerbWeight+'kg' : '', reg].filter(Boolean).join(' · ');
         document.getElementById('mbVehiclePill').classList.add('show');
         document.getElementById('mbVehicleFields').style.display = 'block';
       } else {
@@ -1321,11 +1334,13 @@ async function manualGenerateQuote() {
   const step2 = document.getElementById('mbStep2');
 
   if (pc && pc.served && pc.pricePerTon) {
-    const estimated = Math.round((1200/1000) * pc.pricePerTon);
+    const weightKg = parseFloat(document.getElementById('mbWeight').value) || 1200;
+    const estimated = Math.round((weightKg / 1000) * pc.pricePerTon);
     amtEl.value = estimated;
     quoteResult.style.display = 'block';
     step2.style.display = 'block';
-    toast('Quote: £' + estimated + ' — edit if needed');
+    const weightNote = document.getElementById('mbWeight').value ? weightKg + 'kg' : 'est. 1200kg';
+    toast('Quote: £' + estimated + ' (' + weightNote + ' @ £' + pc.pricePerTon + '/t) — edit if needed');
   } else {
     amtEl.value = '';
     quoteResult.style.display = 'block';
@@ -1334,6 +1349,21 @@ async function manualGenerateQuote() {
   }
 
   btn.disabled = false; btn.textContent = '⚡ Generate Quote';
+}
+
+function recalcManualQuote() {
+  const weight = parseFloat(document.getElementById('mbWeight').value);
+  const postcode = document.getElementById('mbPostcode').value.trim().toUpperCase().replace(/\s/g,'');
+  if (!weight || !postcode) return;
+  let pc = null;
+  for (let len = Math.min(4, postcode.length); len >= 1; len--) {
+    pc = pcs.find(p => p.prefix === postcode.slice(0, len));
+    if (pc) break;
+  }
+  if (pc && pc.served && pc.pricePerTon) {
+    const estimated = Math.round((weight / 1000) * pc.pricePerTon);
+    document.getElementById('mbAmount').value = estimated;
+  }
 }
 
 function openManualBookingModal() {
@@ -1347,7 +1377,7 @@ function openManualBookingModal() {
   document.getElementById('mbStep2').style.display='none';
   document.getElementById('mbVehiclePill').classList.remove('show');
   document.getElementById('mbVehicleFields').style.display='none';
-  ['mbReg','mbAmount','mbName','mbPhone','mbEmail','mbAddress','mbPostcode','mbNotes','mbMake','mbModel','mbYear'].forEach(id => {
+  ['mbReg','mbAmount','mbName','mbPhone','mbEmail','mbAddress','mbPostcode','mbNotes','mbMake','mbModel','mbYear','mbWeight'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -1386,9 +1416,10 @@ async function submitManualBooking() {
   msgEl.textContent = '⏳ Saving booking...';
 
   // Save to Supabase bookings table
+  const weight    = parseFloat(document.getElementById('mbWeight').value) || null;
   const bookingRow = {
     name, phone, email, address, postcode, reg,
-    quote: amount, make, model, year,
+    quote: amount, make, model, year, weight,
     status: 'completed',
     notes: notes || null,
     driveable: null, has_v5: null, has_keys: null
