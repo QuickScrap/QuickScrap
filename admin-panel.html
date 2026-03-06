@@ -420,6 +420,53 @@
       </div>
       <label>Notes</label>
       <textarea class="field" id="mbNotes" rows="2" style="resize:vertical;" placeholder="Any additional notes..."></textarea>
+
+      <!-- Vehicle Condition -->
+      <div style="margin-top:12px;padding:12px;background:#333;border-radius:6px;">
+        <div style="font-size:.7rem;font-weight:700;letter-spacing:1.5px;color:#FFD21F;margin-bottom:10px;">VEHICLE CONDITION</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.88rem;font-weight:400;color:#ccc;cursor:pointer;">
+            <input type="checkbox" id="mbDriveable" style="width:16px;height:16px;accent-color:#FFD21F;" />
+            🚗 Vehicle is driveable
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.88rem;font-weight:400;color:#ccc;cursor:pointer;">
+            <input type="checkbox" id="mbHasV5" style="width:16px;height:16px;accent-color:#FFD21F;" />
+            📄 Customer has V5 logbook
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.88rem;font-weight:400;color:#ccc;cursor:pointer;">
+            <input type="checkbox" id="mbHasKeys" style="width:16px;height:16px;accent-color:#FFD21F;" />
+            🔑 Customer has keys
+          </label>
+        </div>
+      </div>
+
+      <!-- Extras / Bonuses -->
+      <div style="margin-top:10px;padding:12px;background:#333;border-radius:6px;">
+        <div style="font-size:.7rem;font-weight:700;letter-spacing:1.5px;color:#FFD21F;margin-bottom:10px;">EXTRAS</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;text-transform:none;letter-spacing:0;font-size:.88rem;font-weight:400;color:#ccc;cursor:pointer;background:#2a2a2a;padding:10px 12px;border-radius:4px;border:1.5px solid #444;" id="mbAlloyCard">
+            <span style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="mbAlloys" style="width:16px;height:16px;accent-color:#2ecc71;" onchange="mbUpdateBonus()" />
+              <span>
+                <strong style="display:block;color:#F4F4F3;font-size:.9rem;">Alloy wheels</strong>
+                <span style="font-size:.75rem;color:#999;">Alloys are worth more — adds a bonus</span>
+              </span>
+            </span>
+            <span style="background:#FFD21F;color:#383838;font-family:Anton,sans-serif;font-size:.85rem;padding:3px 10px;white-space:nowrap;">+£20</span>
+          </label>
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;text-transform:none;letter-spacing:0;font-size:.88rem;font-weight:400;color:#ccc;cursor:pointer;background:#2a2a2a;padding:10px 12px;border-radius:4px;border:1.5px solid #444;" id="mbDropoffCard">
+            <span style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="mbDropoff" style="width:16px;height:16px;accent-color:#2ecc71;" onchange="mbUpdateBonus()" />
+              <span>
+                <strong style="display:block;color:#F4F4F3;font-size:.9rem;">Customer drop-off</strong>
+                <span style="font-size:.75rem;color:#999;">Customer brings the car to us — adds a bonus</span>
+              </span>
+            </span>
+            <span style="background:#FFD21F;color:#383838;font-family:Anton,sans-serif;font-size:.85rem;padding:3px 10px;white-space:nowrap;">+£30</span>
+          </label>
+        </div>
+      </div>
+
       <div style="margin-top:10px;">
         <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;color:#999;text-transform:none;letter-spacing:0;margin:0;cursor:pointer;">
           <input type="checkbox" id="mbSendEmail" checked /> Email invoice to customer
@@ -1394,16 +1441,31 @@ async function manualGenerateQuote() {
     amtEl.value = estimated;
     quoteResult.style.display = 'block';
     step2.style.display = 'block';
+    // Auto-fill collection postcode from Step 1 postcode
+    const mbPc = document.getElementById('mbCollectionPostcode');
+    if (mbPc && !mbPc.value) mbPc.value = document.getElementById('mbPostcode').value;
     const weightNote = document.getElementById('mbWeight').value ? weightKg + 'kg' : 'est. 1200kg';
     toast('Quote: £' + estimated + ' (' + weightNote + ' @ £' + pc.pricePerTon + '/t) — edit if needed');
   } else {
     amtEl.value = '';
     quoteResult.style.display = 'block';
     step2.style.display = 'block';
+    // Auto-fill collection postcode from Step 1 postcode
+    const mbPc2 = document.getElementById('mbCollectionPostcode');
+    if (mbPc2 && !mbPc2.value) mbPc2.value = document.getElementById('mbPostcode').value;
     msgEl.textContent += (msgEl.textContent ? ' · ' : '') + 'Postcode not in coverage area — enter amount manually';
   }
 
   btn.disabled = false; btn.textContent = '⚡ Generate Quote';
+}
+
+function mbUpdateBonus() {
+  const baseAmt = parseFloat(document.getElementById('mbAmount').value) || 0;
+  const alloys  = document.getElementById('mbAlloys').checked;
+  const dropoff = document.getElementById('mbDropoff').checked;
+  // Update card styles
+  document.getElementById('mbAlloyCard').style.borderColor  = alloys  ? '#2ecc71' : '#444';
+  document.getElementById('mbDropoffCard').style.borderColor = dropoff ? '#2ecc71' : '#444';
 }
 
 function recalcManualQuote() {
@@ -1432,8 +1494,9 @@ function openManualBookingModal() {
   document.getElementById('mbStep2').style.display='none';
   document.getElementById('mbVehiclePill').classList.remove('show');
   document.getElementById('mbVehicleFields').style.display='none';
-  ['mbDriveable','mbHasV5','mbHasKeys'].forEach(id => { const el = document.getElementById(id); if(el) el.checked = false; });
-  ['mbReg','mbAmount','mbName','mbPhone','mbEmail','mbAddress','mbPostcode','mbNotes','mbMake','mbModel','mbYear','mbWeight'].forEach(id => {
+  ['mbDriveable','mbHasV5','mbHasKeys','mbAlloys','mbDropoff'].forEach(id => { const el = document.getElementById(id); if(el) el.checked = false; });
+  if(document.getElementById('mbAlloyCard')) { document.getElementById('mbAlloyCard').style.borderColor='#444'; document.getElementById('mbDropoffCard').style.borderColor='#444'; }
+  ['mbReg','mbAmount','mbName','mbPhone','mbEmail','mbAddress','mbPostcode','mbCollectionPostcode','mbNotes','mbMake','mbModel','mbYear','mbWeight'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -1453,7 +1516,8 @@ async function submitManualBooking(mode = "selfbill") {
   const phone   = document.getElementById('mbPhone').value.trim();
   const email   = document.getElementById('mbEmail').value.trim();
   const address = document.getElementById('mbAddress').value.trim();
-  const postcode= document.getElementById('mbPostcode').value.trim().toUpperCase();
+  const collPc = document.getElementById('mbCollectionPostcode').value.trim().toUpperCase();
+  const postcode= collPc || document.getElementById('mbPostcode').value.trim().toUpperCase();
   const date    = document.getElementById('mbDate').value;
   const notes   = document.getElementById('mbNotes').value.trim();
   const make    = document.getElementById('mbMake').value.trim();
@@ -1467,7 +1531,7 @@ async function submitManualBooking(mode = "selfbill") {
     msgEl.textContent = '⚠ Please fill in reg and name at minimum.';
     return;
   }
-  if (mode === 'selfbill' && (!amount || amount < 1)) {
+  if (mode === 'selfbill' && (isNaN(amount) || amount === null || amount === undefined)) {
     msgEl.style.color = '#ff8a80';
     msgEl.textContent = '⚠ Payment amount required to generate a self-bill.';
     return;
@@ -1480,9 +1544,13 @@ async function submitManualBooking(mode = "selfbill") {
   const driveable = document.getElementById('mbDriveable').checked;
   const has_v5    = document.getElementById('mbHasV5').checked;
   const has_keys  = document.getElementById('mbHasKeys').checked;
+  const alloys    = document.getElementById('mbAlloys').checked;
+  const dropoff   = document.getElementById('mbDropoff').checked;
+  const bonus     = (alloys ? 20 : 0) + (dropoff ? 30 : 0);
+  const finalAmount = (!isNaN(amount) && amount !== '' && amount !== null) ? amount + bonus : null;
   const bookingRow = {
     name, phone, email, address, postcode, reg,
-    quote: (amount && !isNaN(amount)) ? amount : null,
+    quote: finalAmount,
     status: mode === 'selfbill' ? 'completed' : 'new',
     notes: notes || null,
     driveable, has_v5, has_keys,
@@ -1504,7 +1572,7 @@ async function submitManualBooking(mode = "selfbill") {
       id: saved[0].id,
       date: new Date().toLocaleDateString('en-GB'),
       name, phone, email, address, postcode, reg,
-      quote: (amount && !isNaN(amount)) ? amount : 0,
+      quote: finalAmount || 0,
       status: mode === 'selfbill' ? 'completed' : 'new',
       driveable: driveable ? '✅ Yes' : '❌ No',
       has_v5: has_v5 ? '✅ Yes' : '❌ No',
