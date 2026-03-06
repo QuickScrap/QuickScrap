@@ -427,6 +427,8 @@
       <option value="completed">Completed</option>
       <option value="cancelled">Cancelled</option>
     </select>
+    <label>Payment Amount (£)</label>
+    <input class="field" id="editQuote" type="number" min="0" placeholder="e.g. 185" />
     <label>Notes</label>
     <textarea class="field" id="editNotes" rows="3" style="resize:vertical;"></textarea>
     <div class="modal-btns">
@@ -1198,6 +1200,7 @@ function openEditModal(id) {
   document.getElementById('editAddress').value = b.address||'';
   document.getElementById('editPostcode').value = b.postcode||'';
   document.getElementById('editStatus').value = b.status||'new';
+  document.getElementById('editQuote').value = b.quote||'';
   document.getElementById('editNotes').value = b.rawNotes||b.notes||'';
   document.getElementById('editModal').classList.add('show');
 }
@@ -1217,6 +1220,7 @@ async function saveEditBooking() {
     address: document.getElementById('editAddress').value.trim(),
     postcode:document.getElementById('editPostcode').value.trim().toUpperCase(),
     status:  document.getElementById('editStatus').value,
+    quote:   parseFloat(document.getElementById('editQuote').value) || 0,
     notes:   document.getElementById('editNotes').value.trim(),
   };
   try {
@@ -1242,19 +1246,28 @@ document.addEventListener('click', e => {
 
 // ── MANUAL BOOKING ────────────────────────────────────────────────
 function calcManualQuote() {
-  const postcode = document.getElementById('mbPostcode').value.trim().toUpperCase();
+  const postcode = document.getElementById('mbPostcode').value.trim().toUpperCase().replace(/\s/g,'');
   if (!postcode || postcode.length < 2) return;
-  const prefix = postcode.replace(/\s/g,'').slice(0,-3).toUpperCase();
-  const pc = pcs.find(p => prefix.startsWith(p.prefix) || p.prefix === prefix);
+  // Try progressively shorter prefixes: e.g. TR1 -> TR
+  let pc = null;
+  for (let len = Math.min(4, postcode.length); len >= 1; len--) {
+    const prefix = postcode.slice(0, len);
+    pc = pcs.find(p => p.prefix === prefix);
+    if (pc) break;
+  }
+  const amtEl = document.getElementById('mbAmount');
   if (pc && pc.served && pc.pricePerTon) {
     const estimated = Math.round((1200/1000) * pc.pricePerTon);
-    const amtEl = document.getElementById('mbAmount');
     if (amtEl && !amtEl._manuallyEdited) {
       amtEl.value = estimated;
       amtEl.style.borderColor = '#2ecc71';
       setTimeout(() => { if(amtEl) amtEl.style.borderColor = ''; }, 2000);
       toast('Quote auto-calculated: £' + estimated + ' (override if needed)');
     }
+  } else if (postcode.length >= 4 && amtEl && !amtEl._manuallyEdited) {
+    // Postcode entered but no match found
+    amtEl.style.borderColor = '#ff8a80';
+    setTimeout(() => { if(amtEl) amtEl.style.borderColor = ''; }, 2000);
   }
 }
 
