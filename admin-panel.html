@@ -11,6 +11,7 @@
   Never link to it from any public page.
 -->
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Epilogue:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   #qs-admin-root * { box-sizing: border-box; margin: 0; padding: 0; }
   #qs-admin-root { display: block; font-family: 'Epilogue', sans-serif; font-size: 16px; color: #F4F4F3; background: #232323; min-height: 100vh; }
@@ -462,6 +463,7 @@ async function loadFromSupabase() {
       name:r.name, phone:r.phone, email:r.email,
       address:r.address, postcode:r.postcode, reg:r.reg,
       quote:r.quote, area:r.area,
+      make:r.make||'', model:r.model||'', year:r.year||'',
       status: r.status || 'new',
       driveable: r.driveable===true ? '✅ Yes' : r.driveable===false ? '❌ No' : '—',
       has_v5: r.has_v5 || '—',
@@ -898,7 +900,13 @@ function cycleStatus(id) {
   if (!b) return;
   const curr = b.status || 'new';
   const nextIdx = (STATUS_CYCLE.indexOf(curr) + 1) % STATUS_CYCLE.length;
-  updateBookingStatus(id, STATUS_CYCLE[nextIdx]);
+  const newStatus = STATUS_CYCLE[nextIdx];
+  updateBookingStatus(id, newStatus);
+  if (newStatus === 'completed') {
+    if (confirm('Booking marked as Completed!\n\nGenerate and email self-bill invoice to customer?')) {
+      generateSelfBill(id);
+    }
+  }
 }
 
 function statusBadge(id, status) {
@@ -1042,6 +1050,229 @@ async function saveEditBooking() {
 document.addEventListener('click', e => {
   if (e.target.id === 'editModal') closeEditModal();
 });
+
+// ── SELF-BILL INVOICE ─────────────────────────────────────────────
+function padInvoiceNum(id) {
+  return 'QS-' + String(id).padStart(5, '0');
+}
+
+async function generateSelfBill(id) {
+  const b = bookings.find(b=>b.id===id);
+  if (!b) { toast('Booking not found', true); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, H = 297;
+  const invoiceNum = padInvoiceNum(b.id);
+  const today = new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'long',year:'numeric'});
+
+  // ── Header bar ──────────────────────────────────────────────────
+  doc.setFillColor(56, 56, 56);
+  doc.rect(0, 0, W, 38, 'F');
+  doc.setFillColor(255, 210, 31);
+  doc.rect(0, 38, W, 3, 'F');
+
+  // Logo text
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(22);
+  doc.setTextColor(244, 244, 243);
+  doc.text('QUICK', 20, 24);
+  doc.setTextColor(255, 210, 31);
+  doc.text('SCRAP', 47, 24);
+
+  // Self-bill label top right
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(255, 210, 31);
+  doc.text('SELF-BILLING INVOICE', W - 20, 16, { align: 'right' });
+  doc.setTextColor(180, 180, 180);
+  doc.setFontSize(8);
+  doc.text(invoiceNum, W - 20, 22, { align: 'right' });
+  doc.text('Date: ' + today, W - 20, 28, { align: 'right' });
+
+  // ── Buyer / Seller boxes ─────────────────────────────────────────
+  let y = 52;
+  doc.setFillColor(46, 46, 46);
+  doc.rect(14, y, 84, 46, 'F');
+  doc.rect(112, y, 84, 46, 'F');
+
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 210, 31);
+  doc.text('BUYER (QuickScrap)', 20, y + 8);
+  doc.setTextColor(200, 200, 200);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text('QuickScrap', 20, y + 16);
+  doc.text('Newham Road', 20, y + 22);
+  doc.text('Truro, TR1 2SU', 20, y + 28);
+  doc.text('Tel: 01872 218907', 20, y + 34);
+  doc.text('hello@quickscrap.co.uk', 20, y + 40);
+
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 210, 31);
+  doc.text('SELLER (Vehicle Owner)', 118, y + 8);
+  doc.setTextColor(200, 200, 200);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(b.name || '—', 118, y + 16);
+  if (b.address) doc.text(b.address, 118, y + 22);
+  if (b.postcode) doc.text(b.postcode, 118, y + 28);
+  if (b.phone) doc.text(b.phone, 118, y + 34);
+  if (b.email) doc.text(b.email, 118, y + 40);
+
+  // ── Vehicle details table ────────────────────────────────────────
+  y += 56;
+  doc.setFillColor(255, 210, 31);
+  doc.rect(14, y, 182, 8, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(56, 56, 56);
+  doc.text('VEHICLE DETAILS', 20, y + 5.5);
+
+  y += 8;
+  const rows = [
+    ['Registration', b.reg || '—'],
+    ['Vehicle', (b.quote ? (b.name ? '' : '') : '') + '—'],
+    ['Collection Address', (b.address || '—') + (b.postcode ? ', ' + b.postcode : '')],
+    ['Collection Date', today],
+  ];
+
+  // Try to get vehicle name from booking
+  const vehicleDesc = [b.year, b.make, b.model].filter(Boolean).join(' ') || '—';
+  rows[1][1] = vehicleDesc;
+
+  rows.forEach((row, i) => {
+    const bg = i % 2 === 0 ? [42, 42, 42] : [50, 50, 50];
+    doc.setFillColor(...bg);
+    doc.rect(14, y, 182, 8, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text(row[0], 20, y + 5.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(220, 220, 220);
+    doc.text(String(row[1]), 100, y + 5.5);
+    y += 8;
+  });
+
+  // ── Payment summary ──────────────────────────────────────────────
+  y += 10;
+  doc.setFillColor(255, 210, 31);
+  doc.rect(14, y, 182, 8, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(56, 56, 56);
+  doc.text('PAYMENT SUMMARY', 20, y + 5.5);
+  y += 8;
+
+  doc.setFillColor(42, 42, 42);
+  doc.rect(14, y, 182, 8, 'F');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(150, 150, 150);
+  doc.text('Vehicle scrap value', 20, y + 5.5);
+  doc.setTextColor(220, 220, 220);
+  doc.text('£' + (b.quote || '0'), 180, y + 5.5, { align: 'right' });
+  y += 8;
+
+  doc.setFillColor(50, 50, 50);
+  doc.rect(14, y, 182, 8, 'F');
+  doc.setTextColor(150, 150, 150);
+  doc.text('VAT (Not VAT registered)', 20, y + 5.5);
+  doc.setTextColor(220, 220, 220);
+  doc.text('£0.00', 180, y + 5.5, { align: 'right' });
+  y += 8;
+
+  // Total row
+  doc.setFillColor(255, 210, 31);
+  doc.rect(14, y, 182, 10, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(56, 56, 56);
+  doc.text('TOTAL PAYMENT TO SELLER', 20, y + 7);
+  doc.text('£' + (b.quote || '0'), 180, y + 7, { align: 'right' });
+  y += 20;
+
+  // ── Self-bill notice ─────────────────────────────────────────────
+  doc.setFillColor(35, 35, 35);
+  doc.rect(14, y, 182, 22, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(255, 210, 31);
+  doc.text('SELF-BILLING ARRANGEMENT', 20, y + 7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(160, 160, 160);
+  doc.setFontSize(7);
+  const notice = 'This document has been raised by QuickScrap on behalf of the seller named above. The seller accepts that QuickScrap will issue self-billing invoices on their behalf and will not raise VAT invoices for the supplies detailed above. Payment will be made by bank transfer.';
+  const lines = doc.splitTextToSize(notice, 170);
+  doc.text(lines, 20, y + 13);
+  y += 30;
+
+  // ── Footer ───────────────────────────────────────────────────────
+  doc.setFillColor(56, 56, 56);
+  doc.rect(0, H - 18, W, 18, 'F');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(150, 150, 150);
+  doc.text('QuickScrap · Newham Road, Truro, TR1 2SU · 01872 218907 · hello@quickscrap.co.uk', W/2, H - 10, { align: 'center' });
+  doc.setTextColor(255, 210, 31);
+  doc.text(invoiceNum, W/2, H - 5, { align: 'center' });
+
+  // ── Download PDF ─────────────────────────────────────────────────
+  const filename = `QuickScrap-SelfBill-${invoiceNum}.pdf`;
+  doc.save(filename);
+
+  // ── Email to customer ────────────────────────────────────────────
+  const email = b.email;
+  if (email) {
+    try {
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+      await fetch('https://quickscrap-proxy.spring-fog-4db0.workers.dev/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: 'QuickScrap <hello@quickscrap.co.uk>',
+          to: [email],
+          subject: `Self-Bill Invoice ${invoiceNum} — QuickScrap`,
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#fff;">
+              <div style="background:#383838;padding:24px 28px;">
+                <img src="https://images.squarespace-cdn.com/content/v1/689b5ba5c7aa8b553d080da7/d4f8316d-5ab3-455e-a44b-a159aa04eb3f/QUICK+SCRAP.png?format=1500w" alt="QuickScrap" style="height:40px;">
+              </div>
+              <div style="padding:28px;">
+                <h2 style="margin:0 0 8px;color:#232323;">Your Self-Bill Invoice</h2>
+                <p style="color:#666;margin:0 0 20px;">Hi ${(b.name||'').split(' ')[0] || 'there'}, please find your self-bill invoice attached for the collection of your vehicle.</p>
+                <div style="background:#f9f9f9;border-left:4px solid #FFD21F;padding:16px 20px;margin-bottom:20px;">
+                  <table style="width:100%;border-collapse:collapse;">
+                    <tr><td style="padding:5px 0;color:#666;">Invoice</td><td style="text-align:right;font-weight:600;">${invoiceNum}</td></tr>
+                    <tr><td style="padding:5px 0;color:#666;">Vehicle</td><td style="text-align:right;font-weight:600;">${vehicleDesc}</td></tr>
+                    <tr><td style="padding:5px 0;color:#666;">Registration</td><td style="text-align:right;font-weight:600;">${b.reg||'—'}</td></tr>
+                    <tr><td style="padding:5px 0;color:#666;font-weight:700;">Payment Amount</td><td style="text-align:right;font-weight:700;font-size:1.1rem;">£${b.quote||0}</td></tr>
+                  </table>
+                </div>
+                <p style="color:#666;font-size:0.85rem;line-height:1.6;">Payment will be made to your bank account by transfer. If you have any questions please call us on <strong>01872 218907</strong>.</p>
+              </div>
+              <div style="background:#383838;padding:16px 28px;text-align:center;">
+                <p style="color:#999;font-size:0.75rem;margin:0;">QuickScrap · Newham Road, Truro, TR1 2SU · 01872 218907</p>
+              </div>
+            </div>
+          `,
+          attachments: [{
+            filename: filename,
+            content: pdfBase64,
+            encoding: 'base64',
+            type: 'application/pdf'
+          }]
+        })
+      });
+      toast('Self-bill emailed to ' + email);
+    } catch(e) {
+      toast('PDF downloaded but email failed: ' + e.message, true);
+    }
+  }
+}
 
 // ── SETTINGS BACKUP ───────────────────────────────────────────────
 function exportSettings() {
