@@ -130,6 +130,9 @@
   #qs-admin-root .modal select.field { cursor:pointer; }
   #qs-admin-root .modal-btns { display:flex; gap:10px; margin-top:20px; }
   #qs-admin-root .archive-toggle { display:flex; align-items:center; gap:8px; font-size:.78rem; color:#999; cursor:pointer; user-select:none; }
+  #qs-admin-root .inline-edit-quote { display:inline-flex; align-items:center; gap:5px; }
+  #qs-admin-root .inline-edit-quote input { background:#2e2e2e; border:1.5px solid #FFD21F; color:#FFD21F; font-family:'Anton',sans-serif; font-size:.9rem; width:70px; padding:3px 7px; outline:none; text-align:center; }
+  #qs-admin-root .inline-edit-quote .save-q { background:#FFD21F; color:#383838; border:none; padding:3px 8px; font-size:.75rem; font-weight:700; cursor:pointer; }
   #qs-admin-root .manual-vehicle-pill { background:#2e2e2e; border-left:4px solid #FFD21F; padding:12px 16px; margin-top:8px; margin-bottom:4px; display:none; }
   #qs-admin-root .manual-vehicle-pill.show { display:block; }
   #qs-admin-root .manual-vehicle-name { font-family:'Anton',sans-serif; font-size:1rem; color:#F4F4F3; }
@@ -371,7 +374,7 @@
     <div style="margin-top:4px;margin-bottom:2px;"><span id="mbLookupMsg" style="font-size:.78rem;color:#ff8a80;"></span></div>
 
     <label style="margin-top:14px;">Payment Amount (£) *</label>
-    <input class="field" id="mbAmount" type="number" min="1" placeholder="e.g. 185" />
+    <input class="field" id="mbAmount" type="number" min="1" placeholder="Auto-calculated from postcode or enter manually" oninput="this._manuallyEdited=true" />
 
     <label>Full Name *</label>
     <input class="field" id="mbName" type="text" placeholder="Jane Smith" />
@@ -382,7 +385,7 @@
     <label>Collection Address</label>
     <input class="field" id="mbAddress" type="text" placeholder="12 Example Street, Truro" />
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <div><label>Postcode</label><input class="field" id="mbPostcode" type="text" placeholder="TR1 2SU" /></div>
+      <div><label>Postcode</label><input class="field" id="mbPostcode" type="text" placeholder="TR1 2SU" oninput="calcManualQuote()" /></div>
       <div><label>Collection Date</label><input class="field" id="mbDate" type="date" /></div>
     </div>
     <label>Notes</label>
@@ -895,10 +898,118 @@ function renderLeads() {
       <td>${l.postcode||'—'}</td>
       <td>${l.area||'—'}</td>
       <td>${l.weight?l.weight+'kg':'—'}</td>
-      <td><span class="quote-tag">£${l.quote||0}</span></td>
-      <td><button class="btn sm ${l.archived?'outline':'archive'}" onclick="toggleArchiveLead(${l.id})">${l.archived?'Unarchive':'Archive'}</button></td>
+      <td>
+        <div class="inline-edit-quote" id="quote-edit-${l.id}">
+          <input type="number" value="${l.quote||0}" min="0" id="quote-inp-${l.id}" onkeydown="if(event.key==='Enter')saveLeadQuote(${l.id})" />
+          <button class="save-q" onclick="saveLeadQuote(${l.id})">✓</button>
+        </div>
+      </td>
+      <td style="white-space:nowrap;">
+        ${l.email ? `<button class="btn sm outline" onclick="resendQuoteEmail(${l.id})" style="margin-bottom:4px;" title="Resend quote email">✉ Resend</button><br>` : ''}
+        <button class="btn sm ${l.archived?'outline':'archive'}" onclick="toggleArchiveLead(${l.id})">${l.archived?'Unarchive':'Archive'}</button>
+      </td>
     </tr>
   `).join('');
+}
+
+async function saveLeadQuote(id) {
+  const l = leads.find(l=>l.id===id);
+  if (!l) return;
+  const inp = document.getElementById('quote-inp-'+id);
+  const val = parseFloat(inp?.value);
+  if (isNaN(val) || val < 0) { toast('Invalid amount', true); return; }
+  l.quote = val;
+  try {
+    await fetch(SUPA_URL+'/rest/v1/leads?id=eq.'+id, {
+      method:'PATCH',
+      headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+      body:JSON.stringify({quote:val})
+    });
+    toast('Quote updated to £'+val);
+    renderStats();
+  } catch(e) { toast('Save failed',true); }
+}
+
+async function resendQuoteEmail(id) {
+  const l = leads.find(l=>l.id===id);
+  if (!l || !l.email) { toast('No email on file', true); return; }
+  try {
+    await fetch('https://quickscrap-proxy.spring-fog-4db0.workers.dev/email', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        from: 'QuickScrap <hello@quickscrap.co.uk>',
+        to: [l.email],
+        subject: 'Your QuickScrap Quote — ' + (l.reg||''),
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#fff;">
+            <div style="background:#383838;padding:24px 28px;">
+              <img src="https://images.squarespace-cdn.com/content/v1/689b5ba5c7aa8b553d080da7/d4f8316d-5ab3-455e-a44b-a159aa04eb3f/QUICK+SCRAP.png?format=1500w" alt="QuickScrap" style="height:40px;">
+            </div>
+            <div style="padding:28px;">
+              <h2 style="margin:0 0 8px;color:#232323;">Your Scrap Car Quote</h2>
+              <p style="color:#666;margin:0 0 20px;">Hi ${(l.name||'').split(' ')[0]||'there'}, here's your quote from QuickScrap.</p>
+              <div style="background:#f9f9f9;border-left:4px solid #FFD21F;padding:16px 20px;margin-bottom:20px;">
+                <table style="width:100%;border-collapse:collapse;">
+                  <tr><td style="padding:5px 0;color:#666;">Vehicle</td><td style="text-align:right;font-weight:600;">${[l.year,l.make,l.model].filter(Boolean).join(' ')||'—'}</td></tr>
+                  <tr><td style="padding:5px 0;color:#666;">Registration</td><td style="text-align:right;font-weight:600;">${l.reg||'—'}</td></tr>
+                  <tr><td style="padding:5px 0;color:#666;font-weight:700;">Your Quote</td><td style="text-align:right;font-weight:700;font-size:1.2rem;color:#232323;">£${l.quote||0}</td></tr>
+                </table>
+              </div>
+              <p style="color:#666;font-size:0.85rem;">To book your free collection, visit <a href="https://www.quickscrap.co.uk" style="color:#383838;">quickscrap.co.uk</a> or call <strong>01872 218907</strong>.</p>
+            </div>
+            <div style="background:#383838;padding:16px 28px;text-align:center;">
+              <p style="color:#999;font-size:0.75rem;margin:0;">QuickScrap · Newham Road, Truro, TR1 2SU · 01872 218907</p>
+            </div>
+          </div>`
+      })
+    });
+    toast('Quote email resent to ' + l.email);
+  } catch(e) { toast('Send failed: '+e.message, true); }
+}
+
+async function resendBookingEmail(id) {
+  const b = bookings.find(b=>b.id===id);
+  if (!b || !b.email) { toast('No email on file', true); return; }
+  // If completed, resend invoice; otherwise resend booking confirmation
+  if (b.status === 'completed') {
+    await generateSelfBill(id, true);
+    return;
+  }
+  try {
+    await fetch('https://quickscrap-proxy.spring-fog-4db0.workers.dev/email', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        from: 'QuickScrap <hello@quickscrap.co.uk>',
+        to: [b.email],
+        subject: 'Booking Confirmation — QuickScrap',
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#fff;">
+            <div style="background:#383838;padding:24px 28px;">
+              <img src="https://images.squarespace-cdn.com/content/v1/689b5ba5c7aa8b553d080da7/d4f8316d-5ab3-455e-a44b-a159aa04eb3f/QUICK+SCRAP.png?format=1500w" alt="QuickScrap" style="height:40px;">
+            </div>
+            <div style="padding:28px;">
+              <h2 style="margin:0 0 8px;color:#232323;">Booking Confirmed</h2>
+              <p style="color:#666;margin:0 0 20px;">Hi ${(b.name||'').split(' ')[0]||'there'}, your vehicle collection has been booked with QuickScrap.</p>
+              <div style="background:#f9f9f9;border-left:4px solid #FFD21F;padding:16px 20px;margin-bottom:20px;">
+                <table style="width:100%;border-collapse:collapse;">
+                  <tr><td style="padding:5px 0;color:#666;">Registration</td><td style="text-align:right;font-weight:600;">${b.reg||'—'}</td></tr>
+                  <tr><td style="padding:5px 0;color:#666;">Collection Address</td><td style="text-align:right;font-weight:600;">${b.address||'—'}</td></tr>
+                  <tr><td style="padding:5px 0;color:#666;">Status</td><td style="text-align:right;font-weight:600;text-transform:capitalize;">${b.status||'Booked'}</td></tr>
+                  <tr><td style="padding:5px 0;color:#666;font-weight:700;">Quote</td><td style="text-align:right;font-weight:700;font-size:1.2rem;color:#232323;">£${b.quote||0}</td></tr>
+                </table>
+              </div>
+              <p style="color:#666;font-size:0.85rem;">We'll be in touch to confirm your collection date. Any questions call <strong>01872 218907</strong>.</p>
+            </div>
+            <div style="background:#383838;padding:16px 28px;text-align:center;">
+              <p style="color:#999;font-size:0.75rem;margin:0;">QuickScrap · Newham Road, Truro, TR1 2SU · 01872 218907</p>
+            </div>
+          </div>`
+      })
+    });
+    toast('Booking confirmation resent to ' + b.email);
+  } catch(e) { toast('Send failed: '+e.message, true); }
 }
 
 async function toggleArchiveLead(id) {
@@ -1039,6 +1150,7 @@ function renderBookings() {
       <td style="white-space:nowrap;">
         <button class="btn sm outline" onclick="openEditModal(${b.id})" style="margin-bottom:4px;">✏️ Edit</button>
         <button class="btn sm outline" onclick="generateSelfBill(${b.id})" style="margin-bottom:4px;border-color:#FFD21F;color:#FFD21F;">⬇ Invoice</button>
+        ${b.email ? `<button class="btn sm outline" onclick="resendBookingEmail(${b.id})" style="margin-bottom:4px;">✉ Resend</button>` : ''}
         <button class="btn sm ${b.archived?'outline':'archive'}" onclick="toggleArchiveBooking(${b.id})">${b.archived?'Unarchive':'Archive'}</button>
       </td>
     </tr>
@@ -1129,6 +1241,23 @@ document.addEventListener('click', e => {
 });
 
 // ── MANUAL BOOKING ────────────────────────────────────────────────
+function calcManualQuote() {
+  const postcode = document.getElementById('mbPostcode').value.trim().toUpperCase();
+  if (!postcode || postcode.length < 2) return;
+  const prefix = postcode.replace(/\s/g,'').slice(0,-3).toUpperCase();
+  const pc = pcs.find(p => prefix.startsWith(p.prefix) || p.prefix === prefix);
+  if (pc && pc.served && pc.pricePerTon) {
+    const estimated = Math.round((1200/1000) * pc.pricePerTon);
+    const amtEl = document.getElementById('mbAmount');
+    if (amtEl && !amtEl._manuallyEdited) {
+      amtEl.value = estimated;
+      amtEl.style.borderColor = '#2ecc71';
+      setTimeout(() => { if(amtEl) amtEl.style.borderColor = ''; }, 2000);
+      toast('Quote auto-calculated: £' + estimated + ' (override if needed)');
+    }
+  }
+}
+
 function openManualBookingModal() {
   // Set today's date as default
   const today = new Date().toISOString().split('T')[0];
@@ -1138,6 +1267,7 @@ function openManualBookingModal() {
   document.getElementById('mbVehiclePill').classList.remove('show');
   document.getElementById('mbVehicleFields').style.display = 'none';
   // Clear all fields
+  const mbAmtEl = document.getElementById('mbAmount'); if (mbAmtEl) mbAmtEl._manuallyEdited = false;
   ['mbReg','mbAmount','mbName','mbPhone','mbEmail','mbAddress','mbPostcode','mbNotes','mbMake','mbModel','mbYear'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
