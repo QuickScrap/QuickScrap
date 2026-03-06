@@ -1496,7 +1496,7 @@ function openManualBookingModal() {
   document.getElementById('mbVehicleFields').style.display='none';
   ['mbDriveable','mbHasV5','mbHasKeys','mbAlloys','mbDropoff'].forEach(id => { const el = document.getElementById(id); if(el) el.checked = false; });
   if(document.getElementById('mbAlloyCard')) { document.getElementById('mbAlloyCard').style.borderColor='#444'; document.getElementById('mbDropoffCard').style.borderColor='#444'; }
-  ['mbReg','mbAmount','mbName','mbPhone','mbEmail','mbAddress','mbPostcode','mbCollectionPostcode','mbNotes','mbMake','mbModel','mbYear','mbWeight'].forEach(id => {
+  ['mbReg','mbAmount','mbName','mbPhone','mbEmail','mbAddress','mbPostcode','mbNotes','mbMake','mbModel','mbYear','mbWeight'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -1516,7 +1516,7 @@ async function submitManualBooking(mode = "selfbill") {
   const phone   = document.getElementById('mbPhone').value.trim();
   const email   = document.getElementById('mbEmail').value.trim();
   const address = document.getElementById('mbAddress').value.trim();
-  const collPc = document.getElementById('mbCollectionPostcode').value.trim().toUpperCase();
+  const collPc = (document.getElementById('mbCollectionPostcode') || {value:''}).value.trim().toUpperCase();
   const postcode= collPc || document.getElementById('mbPostcode').value.trim().toUpperCase();
   const date    = document.getElementById('mbDate').value;
   const notes   = document.getElementById('mbNotes').value.trim();
