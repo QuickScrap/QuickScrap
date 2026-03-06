@@ -197,6 +197,9 @@
       <div class="stat"><div class="num" id="sToday">0</div><div class="lbl">Today</div></div>
       <div class="stat"><div class="num" id="sAvgQuote">£0</div><div class="lbl">Avg Quote</div></div>
       <div class="stat"><div class="num" id="sActiveZones">0</div><div class="lbl">Active Zones</div></div>
+      <div class="stat"><div class="num" id="sTotalBookings">0</div><div class="lbl">Total Bookings</div></div>
+      <div class="stat"><div class="num" id="sCompleted">0</div><div class="lbl">Completed</div></div>
+      <div class="stat highlight"><div class="num" id="sRevenue">£0</div><div class="lbl">Total Revenue</div></div>
       <div class="stat highlight"><div class="num" id="sConversion">0%</div><div class="lbl">Conversion Rate</div></div>
     </div>
     <div class="section">
@@ -460,6 +463,23 @@
     <input class="field" id="editQuote" type="number" min="0" placeholder="e.g. 185" />
     <label>Notes</label>
     <textarea class="field" id="editNotes" rows="3" style="resize:vertical;"></textarea>
+    <div style="margin-top:12px;padding:12px;background:#2a2a2a;border-radius:6px;">
+      <label style="margin-bottom:8px;">Vehicle Condition</label>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.9rem;font-weight:400;color:#ccc;cursor:pointer;">
+          <input type="checkbox" id="editDriveable" style="width:16px;height:16px;accent-color:#FFD21F;" />
+          🚗 Vehicle is driveable
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.9rem;font-weight:400;color:#ccc;cursor:pointer;">
+          <input type="checkbox" id="editHasV5" style="width:16px;height:16px;accent-color:#FFD21F;" />
+          📄 Customer has V5 logbook
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.9rem;font-weight:400;color:#ccc;cursor:pointer;">
+          <input type="checkbox" id="editHasKeys" style="width:16px;height:16px;accent-color:#FFD21F;" />
+          🔑 Customer has keys
+        </label>
+      </div>
+    </div>
     <div class="modal-btns">
       <button class="btn" onclick="saveEditBooking()">💾 Save Changes</button>
       <button class="btn outline" onclick="closeEditModal()">Cancel</button>
@@ -637,13 +657,28 @@ if (document.readyState === 'loading') {
 // ── STATS ─────────────────────────────────────────────────────────
 function renderStats() {
   const today = new Date().toLocaleDateString('en-GB');
-  document.getElementById('sTotalLeads').textContent = leads.length;
-  document.getElementById('sToday').textContent      = leads.filter(l=>l.date===today).length;
-  document.getElementById('sAvgQuote').textContent   = leads.length
-    ? '£'+Math.round(leads.reduce((s,l)=>s+(l.quote||0),0)/leads.length) : '£0';
-  document.getElementById('sActiveZones').textContent = pcs.filter(p=>p.served).length;
-  const convRate = leads.length ? Math.round((bookings.length / leads.length) * 100) : 0;
-  document.getElementById('sConversion').textContent = convRate + '%';
+  const activeLeads = leads.filter(l=>!l.archived);
+  const activeBookings = bookings.filter(b=>!b.archived);
+  const completedBookings = activeBookings.filter(b=>b.status==='completed');
+
+  // Revenue = sum of all completed booking quotes
+  const revenue = completedBookings.reduce((s,b)=>s+(parseFloat(b.quote)||0),0);
+
+  // Avg quote: use leads if available, otherwise fall back to all bookings
+  const quoteSrc = activeLeads.length ? activeLeads : activeBookings;
+  const avgQuote = quoteSrc.length ? Math.round(quoteSrc.reduce((s,x)=>s+(parseFloat(x.quote)||0),0)/quoteSrc.length) : 0;
+
+  // Conversion: bookings vs leads (only counts leads-originated bookings)
+  const convRate = activeLeads.length ? Math.round((activeBookings.length / activeLeads.length) * 100) : 0;
+
+  document.getElementById('sTotalLeads').textContent    = activeLeads.length;
+  document.getElementById('sToday').textContent         = activeLeads.filter(l=>l.date===today).length;
+  document.getElementById('sAvgQuote').textContent      = '£' + avgQuote;
+  document.getElementById('sActiveZones').textContent   = pcs.filter(p=>p.served).length;
+  document.getElementById('sTotalBookings').textContent = activeBookings.length;
+  document.getElementById('sCompleted').textContent     = completedBookings.length;
+  document.getElementById('sRevenue').textContent       = '£' + revenue.toLocaleString('en-GB');
+  document.getElementById('sConversion').textContent    = convRate + '%';
 }
 
 // ── API KEY ───────────────────────────────────────────────────────
@@ -1224,6 +1259,9 @@ function openEditModal(id) {
   if (!b) return;
   document.getElementById('editId').value = id;
   document.getElementById('editName').value = b.name||'';
+  document.getElementById('editDriveable').checked = b.driveable === true || b.driveable === '✅ Yes';
+  document.getElementById('editHasV5').checked = b.has_v5 === true || b.has_v5 === '✅ Yes';
+  document.getElementById('editHasKeys').checked = b.has_keys === true || b.has_keys === '✅ Yes';
   document.getElementById('editPhone').value = b.phone||'';
   document.getElementById('editEmail').value = b.email||'';
   document.getElementById('editAddress').value = b.address||'';
@@ -1244,6 +1282,9 @@ async function saveEditBooking() {
   if (!b) return;
   const updates = {
     name:    document.getElementById('editName').value.trim(),
+    driveable: document.getElementById('editDriveable').checked,
+    has_v5:    document.getElementById('editHasV5').checked,
+    has_keys:  document.getElementById('editHasKeys').checked,
     phone:   document.getElementById('editPhone').value.trim(),
     email:   document.getElementById('editEmail').value.trim(),
     address: document.getElementById('editAddress').value.trim(),
@@ -1391,6 +1432,7 @@ function openManualBookingModal() {
   document.getElementById('mbStep2').style.display='none';
   document.getElementById('mbVehiclePill').classList.remove('show');
   document.getElementById('mbVehicleFields').style.display='none';
+  ['mbDriveable','mbHasV5','mbHasKeys'].forEach(id => { const el = document.getElementById(id); if(el) el.checked = false; });
   ['mbReg','mbAmount','mbName','mbPhone','mbEmail','mbAddress','mbPostcode','mbNotes','mbMake','mbModel','mbYear','mbWeight'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
@@ -1435,11 +1477,15 @@ async function submitManualBooking(mode = "selfbill") {
   msgEl.textContent = mode === 'selfbill' ? '⏳ Saving booking...' : '⏳ Adding booking...';
 
   // Save to Supabase bookings table
+  const driveable = document.getElementById('mbDriveable').checked;
+  const has_v5    = document.getElementById('mbHasV5').checked;
+  const has_keys  = document.getElementById('mbHasKeys').checked;
   const bookingRow = {
     name, phone, email, address, postcode, reg,
     quote: amount,
     status: mode === 'selfbill' ? 'completed' : 'new',
     notes: notes || null,
+    driveable, has_v5, has_keys,
   };
 
   try {
@@ -1456,7 +1502,9 @@ async function submitManualBooking(mode = "selfbill") {
       name, phone, email, address, postcode, reg,
       quote: amount,
       status: mode === 'selfbill' ? 'completed' : 'new',
-      driveable: '—', has_v5: '—', has_keys: '—',
+      driveable: driveable ? '✅ Yes' : '❌ No',
+      has_v5: has_v5 ? '✅ Yes' : '❌ No',
+      has_keys: has_keys ? '✅ Yes' : '❌ No',
       notes: notes || '—', rawNotes: notes || '',
       archived: false
     };
