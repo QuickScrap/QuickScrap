@@ -1,9 +1,9 @@
-<!DOCTYPE html>  
+<!DOCTYPE html>
 <html lang="en">
-<head>  
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QuickScrap — Admin v3</title> 
+<title>QuickScrap — Admin v3</title>
 <!--
   ADMIN PANEL — KEEP THIS URL PRIVATE
   Rename this file to something only you know before uploading.
@@ -116,6 +116,20 @@
   #qs-admin-root .toast { position: fixed; bottom: 24px; right: 24px; background: #FFD21F; color: #383838; font-family: 'Anton', sans-serif; font-size: .85rem; letter-spacing: .5px; padding: 12px 20px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 9999; }
   #qs-admin-root .toast.show { opacity: 1; }
   #qs-admin-root a { color: #FFD21F; }
+  #qs-admin-root .btn.archive { background: transparent; border: 1.5px solid #f39c12; color: #f39c12; }
+  #qs-admin-root .btn.archive:hover { background: #f39c12; color: #fff; }
+  #qs-admin-root .archived-row td { opacity: .4; }
+  #qs-admin-root .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:1000; align-items:center; justify-content:center; }
+  #qs-admin-root .modal-overlay.show { display:flex; }
+  #qs-admin-root .modal { background:#2e2e2e; border:1px solid #4a4a4a; border-top:3px solid #FFD21F; padding:28px; width:100%; max-width:540px; max-height:90vh; overflow-y:auto; }
+  #qs-admin-root .modal h3 { font-family:'Anton',sans-serif; font-size:1.1rem; color:#FFD21F; margin-bottom:18px; }
+  #qs-admin-root .modal label { display:block; font-size:.72rem; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:#999; margin-bottom:5px; margin-top:12px; }
+  #qs-admin-root .modal .field { background:#383838; border:1.5px solid #4a4a4a; color:#F4F4F3; font-family:'Epilogue',sans-serif; font-size:.9rem; padding:9px 12px; outline:none; width:100%; }
+  #qs-admin-root .modal .field:focus { border-color:#FFD21F; }
+  #qs-admin-root .modal select.field { cursor:pointer; }
+  #qs-admin-root .modal-btns { display:flex; gap:10px; margin-top:20px; }
+  #qs-admin-root .archive-toggle { display:flex; align-items:center; gap:8px; font-size:.78rem; color:#999; cursor:pointer; user-select:none; }
+  #qs-admin-root .archive-toggle input { cursor:pointer; }
   #qs-admin-root .imsg { display: none; padding: 10px 14px; font-size: .82rem; font-weight: 500; margin-top: 10px; }
   #qs-admin-root .imsg.show { display: block; }
   #qs-admin-root .imsg.ok  { background: rgba(46,204,113,.08); border-left: 3px solid #2ecc71; color: #a8f0c6; }
@@ -191,7 +205,10 @@
     <div class="section">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
         <div class="section-title" style="margin-bottom:0;">Leads Received</div>
-        <button class="btn danger sm" onclick="clearLeads()">Clear All</button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <label class="archive-toggle"><input type="checkbox" id="showArchivedLeads" onchange="renderLeads()"> Show Archived</label>
+          <button class="btn archive sm" onclick="archiveAllLeads()">Archive All</button>
+        </div>
       </div>
       <div class="filter-bar">
         <input class="filter-input" id="leadsSearch" type="text" placeholder="🔍  Search name, reg, postcode, email..." oninput="renderLeads()" />
@@ -202,7 +219,7 @@
           <thead>
             <tr>
               <th>Date</th><th>Time</th><th>Name</th><th>Phone</th><th>Email</th>
-              <th>Reg</th><th>Vehicle</th><th>Postcode</th><th>Area</th><th>Weight</th><th>Quote</th>
+              <th>Reg</th><th>Vehicle</th><th>Postcode</th><th>Area</th><th>Weight</th><th>Quote</th><th></th>
             </tr>
           </thead>
           <tbody id="leadsBody"></tbody>
@@ -217,7 +234,10 @@
     <div class="section">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
         <div class="section-title" style="margin-bottom:0;">Collection Bookings</div>
-        <button class="btn danger sm" onclick="clearBookings()">Clear All</button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <label class="archive-toggle"><input type="checkbox" id="showArchivedBookings" onchange="renderBookings()"> Show Archived</label>
+          <button class="btn archive sm" onclick="archiveAllBookings()">Archive All</button>
+        </div>
       </div>
       <div class="filter-bar">
         <input class="filter-input" id="bookingsSearch" type="text" placeholder="🔍  Search name, reg, postcode, email..." oninput="renderBookings()" />
@@ -237,7 +257,7 @@
             <tr>
               <th>Date</th><th>Status</th><th>Name</th><th>Phone</th><th>Email</th>
               <th>Address</th><th>Postcode</th><th>Reg</th><th>Quote</th>
-              <th>Driveable</th><th>V5</th><th>Keys</th><th>Notes</th>
+              <th>Driveable</th><th>V5</th><th>Keys</th><th>Notes</th><th></th>
             </tr>
           </thead>
           <tbody id="bookingsBody"></tbody>
@@ -313,6 +333,38 @@
 
 </div>
 <div class="toast" id="toast"></div>
+
+<!-- EDIT BOOKING MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h3>✏️ Edit Booking</h3>
+    <input type="hidden" id="editId" />
+    <label>Full Name</label>
+    <input class="field" id="editName" type="text" />
+    <label>Phone</label>
+    <input class="field" id="editPhone" type="tel" />
+    <label>Email</label>
+    <input class="field" id="editEmail" type="email" />
+    <label>Collection Address</label>
+    <input class="field" id="editAddress" type="text" />
+    <label>Postcode</label>
+    <input class="field" id="editPostcode" type="text" />
+    <label>Status</label>
+    <select class="field" id="editStatus">
+      <option value="new">New</option>
+      <option value="contacted">Contacted</option>
+      <option value="confirmed">Confirmed</option>
+      <option value="completed">Completed</option>
+      <option value="cancelled">Cancelled</option>
+    </select>
+    <label>Notes</label>
+    <textarea class="field" id="editNotes" rows="3" style="resize:vertical;"></textarea>
+    <div class="modal-btns">
+      <button class="btn" onclick="saveEditBooking()">💾 Save Changes</button>
+      <button class="btn outline" onclick="closeEditModal()">Cancel</button>
+    </div>
+  </div>
+</div>
 </div>
 
 <script>
@@ -402,7 +454,7 @@ async function loadFromSupabase() {
       reg:r.reg, postcode:r.postcode,
       make:r.make, model:r.model, year:r.year,
       weight:r.weight, pricePerTon:r.price_per_ton,
-      quote:r.quote, area:r.area
+      quote:r.quote, area:r.area, archived:r.archived||false
     }));
     bookings = bookingData.map(r=>({
       id:r.id,
@@ -414,15 +466,11 @@ async function loadFromSupabase() {
       driveable: r.driveable===true ? '✅ Yes' : r.driveable===false ? '❌ No' : '—',
       has_v5: r.has_v5 || '—',
       has_keys: r.has_keys===true ? '✅ Yes' : r.has_keys===false ? '❌ No' : '—',
-      notes:r.notes||'—'
+      notes:r.notes||'—', rawNotes:r.notes||'', archived:r.archived||false
     }));
-    // If no postcodes in DB yet, seed with all UK districts (all off by default)
+    // Never auto-reseed — only seed manually via the Fix Missing Postcodes button
     if (pcs.length === 0) {
-      toast('Seeding UK postcode districts into database — please wait...');
-      await seedPostcodes();
-      const fresh = await supaFetch('postcodes','select=prefix,area,price_per_ton,served&order=prefix');
-      pcs = fresh.map(r=>({prefix:r.prefix,area:r.area,pricePerTon:r.price_per_ton,served:r.served}));
-      toast('All UK districts loaded — toggle on the areas you cover and save.');
+      imsg('pcMsg', 'No postcode data found. Click "Fix Missing Postcodes" to load UK districts.', 'err');
     }
     if (statusEl) { statusEl.className='db-status ok'; statusEl.textContent='✓ Database connected — ' + pcs.length + ' postcode districts, ' + leads.length + ' leads, ' + bookings.length + ' bookings loaded.'; }
   } catch(e) {
@@ -741,10 +789,11 @@ function renderLeads() {
   const tbody = document.getElementById('leadsBody');
   const empty = document.getElementById('emptyLeads');
   const search = (document.getElementById('leadsSearch')?.value || '').toLowerCase().trim();
+  const showArchived = document.getElementById('showArchivedLeads')?.checked;
 
-  let filtered = leads;
+  let filtered = leads.filter(l => showArchived ? true : !l.archived);
   if (search) {
-    filtered = leads.filter(l =>
+    filtered = filtered.filter(l =>
       (l.name||'').toLowerCase().includes(search) ||
       (l.reg||'').toLowerCase().includes(search) ||
       (l.postcode||'').toLowerCase().includes(search) ||
@@ -754,18 +803,19 @@ function renderLeads() {
     );
   }
 
+  const activeCount = leads.filter(l=>!l.archived).length;
   const countEl = document.getElementById('leadsCount');
-  if (countEl) countEl.textContent = search ? `${filtered.length} of ${leads.length} leads` : `${leads.length} leads`;
+  if (countEl) countEl.textContent = search ? `${filtered.length} of ${activeCount} leads` : `${activeCount} leads (${leads.length - activeCount} archived)`;
 
   if (!filtered.length) {
     tbody.innerHTML='';
     empty.style.display='block';
-    empty.textContent = search ? 'No leads match your search.' : 'No leads yet — quotes submitted on your site will appear here.';
+    empty.textContent = search ? 'No leads match your search.' : (showArchived ? 'No leads found.' : 'No active leads — quotes submitted on your site will appear here.');
     return;
   }
   empty.style.display='none';
   tbody.innerHTML = filtered.map(l=>`
-    <tr>
+    <tr class="${l.archived?'archived-row':''}">
       <td>${l.date||'—'}</td>
       <td>${l.time||'—'}</td>
       <td><strong style="color:#F4F4F3;">${l.name||'—'}</strong></td>
@@ -777,15 +827,40 @@ function renderLeads() {
       <td>${l.area||'—'}</td>
       <td>${l.weight?l.weight+'kg':'—'}</td>
       <td><span class="quote-tag">£${l.quote||0}</span></td>
+      <td><button class="btn sm ${l.archived?'outline':'archive'}" onclick="toggleArchiveLead(${l.id})">${l.archived?'Unarchive':'Archive'}</button></td>
     </tr>
   `).join('');
 }
 
-async function clearLeads() {
-  if (!confirm('Delete all leads? This cannot be undone.')) return;
-  await supaDelete('leads');
-  leads=[];
-  renderLeads(); renderStats(); toast('Leads cleared',true);
+async function toggleArchiveLead(id) {
+  const l = leads.find(l=>l.id===id);
+  if (!l) return;
+  l.archived = !l.archived;
+  try {
+    await fetch(SUPA_URL+'/rest/v1/leads?id=eq.'+id, {
+      method:'PATCH',
+      headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+      body:JSON.stringify({archived:l.archived})
+    });
+    toast(l.archived ? 'Lead archived' : 'Lead restored');
+  } catch(e) { toast('Update failed',true); }
+  renderLeads(); renderStats();
+}
+
+async function archiveAllLeads() {
+  if (!confirm('Archive all active leads? They can be restored anytime.')) return;
+  const active = leads.filter(l=>!l.archived);
+  for (const l of active) {
+    l.archived = true;
+    try {
+      await fetch(SUPA_URL+'/rest/v1/leads?id=eq.'+l.id, {
+        method:'PATCH',
+        headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+        body:JSON.stringify({archived:true})
+      });
+    } catch(e) {}
+  }
+  renderLeads(); renderStats(); toast('All leads archived');
 }
 
 function exportCSV() {
@@ -837,7 +912,8 @@ function renderBookings() {
   const search = (document.getElementById('bookingsSearch')?.value || '').toLowerCase().trim();
   const statusFilter = document.getElementById('bookingsStatusFilter')?.value || '';
 
-  let filtered = bookings;
+  const showArchivedB = document.getElementById('showArchivedBookings')?.checked;
+  let filtered = bookings.filter(b => showArchivedB ? true : !b.archived);
   if (search) {
     filtered = filtered.filter(b =>
       (b.name||'').toLowerCase().includes(search) ||
@@ -863,7 +939,7 @@ function renderBookings() {
   }
   empty.style.display='none';
   tbody.innerHTML = filtered.map(b=>`
-    <tr>
+    <tr class="${b.archived?'archived-row':''}">
       <td>${b.date||'—'}</td>
       <td>${statusBadge(b.id, b.status)}</td>
       <td><strong style="color:#F4F4F3;">${b.name||'—'}</strong></td>
@@ -877,20 +953,95 @@ function renderBookings() {
       <td>${b.has_v5}</td>
       <td>${b.has_keys}</td>
       <td style="max-width:200px;white-space:normal;font-size:.8rem;">${b.notes}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn sm outline" onclick="openEditModal(${b.id})" style="margin-bottom:4px;">✏️ Edit</button>
+        <button class="btn sm ${b.archived?'outline':'archive'}" onclick="toggleArchiveBooking(${b.id})">${b.archived?'Unarchive':'Archive'}</button>
+      </td>
     </tr>
   `).join('');
 }
 
-async function clearBookings() {
-  if (!confirm('Delete all bookings? This cannot be undone.')) return;
-  await fetch(SUPA_URL+'/rest/v1/bookings?id=gt.0',{
-    method:'DELETE',
-    headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY}
-  });
-  bookings=[];
-  renderBookings();
-  toast('Bookings cleared', true);
+async function toggleArchiveBooking(id) {
+  const b = bookings.find(b=>b.id===id);
+  if (!b) return;
+  b.archived = !b.archived;
+  try {
+    await fetch(SUPA_URL+'/rest/v1/bookings?id=eq.'+id, {
+      method:'PATCH',
+      headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+      body:JSON.stringify({archived:b.archived})
+    });
+    toast(b.archived ? 'Booking archived' : 'Booking restored');
+  } catch(e) { toast('Update failed',true); }
+  renderBookings(); renderStats();
 }
+
+async function archiveAllBookings() {
+  if (!confirm('Archive all bookings? They can be restored anytime.')) return;
+  const active = bookings.filter(b=>!b.archived);
+  for (const b of active) {
+    b.archived = true;
+    try {
+      await fetch(SUPA_URL+'/rest/v1/bookings?id=eq.'+b.id, {
+        method:'PATCH',
+        headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+        body:JSON.stringify({archived:true})
+      });
+    } catch(e) {}
+  }
+  renderBookings(); renderStats(); toast('All bookings archived');
+}
+
+function openEditModal(id) {
+  const b = bookings.find(b=>b.id===id);
+  if (!b) return;
+  document.getElementById('editId').value = id;
+  document.getElementById('editName').value = b.name||'';
+  document.getElementById('editPhone').value = b.phone||'';
+  document.getElementById('editEmail').value = b.email||'';
+  document.getElementById('editAddress').value = b.address||'';
+  document.getElementById('editPostcode').value = b.postcode||'';
+  document.getElementById('editStatus').value = b.status||'new';
+  document.getElementById('editNotes').value = b.rawNotes||b.notes||'';
+  document.getElementById('editModal').classList.add('show');
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('show');
+}
+
+async function saveEditBooking() {
+  const id = parseInt(document.getElementById('editId').value);
+  const b = bookings.find(b=>b.id===id);
+  if (!b) return;
+  const updates = {
+    name:    document.getElementById('editName').value.trim(),
+    phone:   document.getElementById('editPhone').value.trim(),
+    email:   document.getElementById('editEmail').value.trim(),
+    address: document.getElementById('editAddress').value.trim(),
+    postcode:document.getElementById('editPostcode').value.trim().toUpperCase(),
+    status:  document.getElementById('editStatus').value,
+    notes:   document.getElementById('editNotes').value.trim(),
+  };
+  try {
+    await fetch(SUPA_URL+'/rest/v1/bookings?id=eq.'+id, {
+      method:'PATCH',
+      headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+      body:JSON.stringify(updates)
+    });
+    Object.assign(b, updates);
+    b.rawNotes = updates.notes;
+    b.notes = updates.notes || '—';
+    closeEditModal();
+    renderBookings(); renderStats();
+    toast('Booking updated');
+  } catch(e) { toast('Save failed: '+e.message, true); }
+}
+
+// Close modal on overlay click
+document.addEventListener('click', e => {
+  if (e.target.id === 'editModal') closeEditModal();
+});
 
 // ── SETTINGS BACKUP ───────────────────────────────────────────────
 function exportSettings() {
