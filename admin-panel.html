@@ -130,6 +130,11 @@
   #qs-admin-root .modal select.field { cursor:pointer; }
   #qs-admin-root .modal-btns { display:flex; gap:10px; margin-top:20px; }
   #qs-admin-root .archive-toggle { display:flex; align-items:center; gap:8px; font-size:.78rem; color:#999; cursor:pointer; user-select:none; }
+  #qs-admin-root .manual-vehicle-pill { background:#2e2e2e; border-left:4px solid #FFD21F; padding:12px 16px; margin-top:8px; margin-bottom:4px; display:none; }
+  #qs-admin-root .manual-vehicle-pill.show { display:block; }
+  #qs-admin-root .manual-vehicle-name { font-family:'Anton',sans-serif; font-size:1rem; color:#F4F4F3; }
+  #qs-admin-root .manual-vehicle-detail { font-size:.78rem; color:#999; margin-top:3px; }
+  #qs-admin-root .field-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
   #qs-admin-root .archive-toggle input { cursor:pointer; }
   #qs-admin-root .imsg { display: none; padding: 10px 14px; font-size: .82rem; font-weight: 500; margin-top: 10px; }
   #qs-admin-root .imsg.show { display: block; }
@@ -235,9 +240,10 @@
     <div class="section">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
         <div class="section-title" style="margin-bottom:0;">Collection Bookings</div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <label class="archive-toggle"><input type="checkbox" id="showArchivedBookings" onchange="renderBookings()"> Show Archived</label>
           <button class="btn archive sm" onclick="archiveAllBookings()">Archive All</button>
+          <button class="btn sm" onclick="openManualBookingModal()" style="background:#FFD21F;color:#383838;">+ Manual Self-Bill</button>
         </div>
       </div>
       <div class="filter-bar">
@@ -334,6 +340,66 @@
 
 </div>
 <div class="toast" id="toast"></div>
+
+<!-- MANUAL BOOKING MODAL -->
+<div class="modal-overlay" id="manualBookingModal">
+  <div class="modal" style="max-width:580px;">
+    <h3>+ Manual Self-Bill</h3>
+    <p style="font-size:.82rem;color:#999;margin-bottom:16px;margin-top:-10px;">Create a self-bill invoice for a customer who hasn't used the online system.</p>
+
+    <label>Reg Plate *</label>
+    <div style="display:flex;gap:8px;">
+      <div style="background:#FFD21F;display:flex;align-items:center;padding:0 12px;gap:6px;flex-shrink:0;">
+        <span>🇬🇧</span>
+        <input id="mbReg" type="text" placeholder="AB12 CDE" maxlength="8"
+          style="background:transparent;border:none;font-family:'Anton',sans-serif;font-size:1rem;letter-spacing:3px;text-transform:uppercase;outline:none;color:#383838;width:110px;padding:10px 0;"
+          oninput="this.value=this.value.toUpperCase()" />
+      </div>
+      <button class="btn" onclick="manualLookupVehicle()" id="mbLookupBtn">Look Up</button>
+    </div>
+    <div class="manual-vehicle-pill" id="mbVehiclePill">
+      <div class="manual-vehicle-name" id="mbVehicleName"></div>
+      <div class="manual-vehicle-detail" id="mbVehicleDetail"></div>
+    </div>
+    <div style="display:none;" id="mbVehicleFields">
+      <div class="field-row-3" style="margin-top:10px;">
+        <div><label>Make</label><input class="field" id="mbMake" type="text" placeholder="Ford" /></div>
+        <div><label>Model</label><input class="field" id="mbModel" type="text" placeholder="Focus" /></div>
+        <div><label>Year</label><input class="field" id="mbYear" type="text" placeholder="2015" /></div>
+      </div>
+    </div>
+    <div style="margin-top:4px;margin-bottom:2px;"><span id="mbLookupMsg" style="font-size:.78rem;color:#ff8a80;"></span></div>
+
+    <label style="margin-top:14px;">Payment Amount (£) *</label>
+    <input class="field" id="mbAmount" type="number" min="1" placeholder="e.g. 185" />
+
+    <label>Full Name *</label>
+    <input class="field" id="mbName" type="text" placeholder="Jane Smith" />
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div><label>Phone</label><input class="field" id="mbPhone" type="tel" placeholder="07700 000000" /></div>
+      <div><label>Email</label><input class="field" id="mbEmail" type="email" placeholder="jane@example.com" /></div>
+    </div>
+    <label>Collection Address</label>
+    <input class="field" id="mbAddress" type="text" placeholder="12 Example Street, Truro" />
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div><label>Postcode</label><input class="field" id="mbPostcode" type="text" placeholder="TR1 2SU" /></div>
+      <div><label>Collection Date</label><input class="field" id="mbDate" type="date" /></div>
+    </div>
+    <label>Notes</label>
+    <textarea class="field" id="mbNotes" rows="2" style="resize:vertical;" placeholder="Any additional notes..."></textarea>
+
+    <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;color:#999;text-transform:none;letter-spacing:0;margin:0;cursor:pointer;">
+        <input type="checkbox" id="mbSendEmail" checked /> Email invoice to customer
+      </label>
+    </div>
+    <div class="modal-btns">
+      <button class="btn" onclick="submitManualBooking()">⬇ Generate Self-Bill</button>
+      <button class="btn outline" onclick="closeManualBookingModal()">Cancel</button>
+    </div>
+    <div id="mbMsg" style="margin-top:10px;font-size:.82rem;"></div>
+  </div>
+</div>
 
 <!-- EDIT BOOKING MODAL -->
 <div class="modal-overlay" id="editModal">
@@ -1059,7 +1125,133 @@ async function saveEditBooking() {
 // Close modal on overlay click
 document.addEventListener('click', e => {
   if (e.target.id === 'editModal') closeEditModal();
+  if (e.target.id === 'manualBookingModal') closeManualBookingModal();
 });
+
+// ── MANUAL BOOKING ────────────────────────────────────────────────
+function openManualBookingModal() {
+  // Set today's date as default
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('mbDate').value = today;
+  document.getElementById('mbMsg').textContent = '';
+  document.getElementById('mbLookupMsg').textContent = '';
+  document.getElementById('mbVehiclePill').classList.remove('show');
+  document.getElementById('mbVehicleFields').style.display = 'none';
+  // Clear all fields
+  ['mbReg','mbAmount','mbName','mbPhone','mbEmail','mbAddress','mbPostcode','mbNotes','mbMake','mbModel','mbYear'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('manualBookingModal').classList.add('show');
+}
+
+function closeManualBookingModal() {
+  document.getElementById('manualBookingModal').classList.remove('show');
+}
+
+async function manualLookupVehicle() {
+  const reg = document.getElementById('mbReg').value.trim().toUpperCase().replace(/\s/g,'');
+  if (!reg || reg.length < 2) { document.getElementById('mbLookupMsg').textContent = 'Please enter a reg plate'; return; }
+  const btn = document.getElementById('mbLookupBtn');
+  btn.disabled = true; btn.textContent = 'Looking up...';
+  document.getElementById('mbLookupMsg').textContent = '';
+  try {
+    const apiKey = localStorage.getItem('sk_apikey');
+    if (!apiKey) throw new Error('No API key set');
+    const url = 'https://quickscrap-proxy.spring-fog-4db0.workers.dev/?vrm=' + reg + '&key=' + apiKey;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Lookup failed');
+    const json = await res.json();
+    if (!json.ResponseInformation?.IsSuccessStatusCode) throw new Error('Vehicle not found');
+    const vi = json.Results?.VehicleDetails?.VehicleIdentification || {};
+    const md = json.Results?.ModelDetails || {};
+    const pt = md.Powertrain || {};
+    const make = md.ModelIdentification?.Make || vi.DvlaMake || '';
+    const model = md.ModelIdentification?.Model || vi.DvlaModel || '';
+    const year = vi.YearOfManufacture || '';
+    const fuel = pt.FuelType || vi.DvlaFuelType || '';
+    document.getElementById('mbMake').value = make;
+    document.getElementById('mbModel').value = model;
+    document.getElementById('mbYear').value = year;
+    document.getElementById('mbVehicleName').textContent = year + ' ' + make + ' ' + model;
+    document.getElementById('mbVehicleDetail').textContent = fuel + (fuel ? ' · ' : '') + reg;
+    document.getElementById('mbVehiclePill').classList.add('show');
+    document.getElementById('mbVehicleFields').style.display = 'block';
+  } catch(e) {
+    document.getElementById('mbLookupMsg').textContent = e.message + ' — fill in vehicle details manually below';
+    document.getElementById('mbVehicleFields').style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Look Up';
+  }
+}
+
+async function submitManualBooking() {
+  const reg     = document.getElementById('mbReg').value.trim().toUpperCase();
+  const amount  = parseFloat(document.getElementById('mbAmount').value);
+  const name    = document.getElementById('mbName').value.trim();
+  const phone   = document.getElementById('mbPhone').value.trim();
+  const email   = document.getElementById('mbEmail').value.trim();
+  const address = document.getElementById('mbAddress').value.trim();
+  const postcode= document.getElementById('mbPostcode').value.trim().toUpperCase();
+  const date    = document.getElementById('mbDate').value;
+  const notes   = document.getElementById('mbNotes').value.trim();
+  const make    = document.getElementById('mbMake').value.trim();
+  const model   = document.getElementById('mbModel').value.trim();
+  const year    = document.getElementById('mbYear').value.trim();
+  const sendEmail = document.getElementById('mbSendEmail').checked;
+  const msgEl   = document.getElementById('mbMsg');
+
+  if (!reg || !name || !amount || amount < 1) {
+    msgEl.style.color = '#ff8a80';
+    msgEl.textContent = '⚠ Please fill in reg, name and payment amount at minimum.';
+    return;
+  }
+
+  msgEl.style.color = '#a8f0c6';
+  msgEl.textContent = '⏳ Saving booking...';
+
+  // Save to Supabase bookings table
+  const bookingRow = {
+    name, phone, email, address, postcode, reg,
+    quote: amount, make, model, year,
+    status: 'completed',
+    notes: notes || null,
+    driveable: null, has_v5: null, has_keys: null
+  };
+
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/bookings', {
+      method: 'POST',
+      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify(bookingRow)
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const saved = await res.json();
+    const newBooking = {
+      id: saved[0].id,
+      date: new Date().toLocaleDateString('en-GB'),
+      name, phone, email, address, postcode, reg,
+      quote: amount, make, model, year,
+      status: 'completed',
+      driveable: '—', has_v5: '—', has_keys: '—',
+      notes: notes || '—', rawNotes: notes || '',
+      archived: false
+    };
+    bookings.unshift(newBooking);
+    renderBookings(); renderStats();
+
+    msgEl.textContent = '✓ Booking saved — generating invoice...';
+
+    // Generate self-bill using existing function
+    await generateSelfBill(newBooking.id, sendEmail);
+
+    msgEl.textContent = '✓ Done! Invoice downloaded' + (sendEmail && email ? ' and emailed to ' + email : '') + '.';
+    setTimeout(() => closeManualBookingModal(), 2000);
+  } catch(e) {
+    msgEl.style.color = '#ff8a80';
+    msgEl.textContent = '⚠ Error: ' + e.message;
+  }
+}
 
 // ── SELF-BILL INVOICE ─────────────────────────────────────────────
 function padInvoiceNum(id) {
