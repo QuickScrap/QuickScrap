@@ -1300,9 +1300,10 @@ async function manualGenerateQuote() {
         const model = md.ModelIdentification?.Model || vi.DvlaModel || '';
         const year = vi.YearOfManufacture || '';
         const fuel = md.Powertrain?.FuelType || vi.DvlaFuelType || '';
-        // Try to get kerb weight from API
-        const dims = json.Results?.TechnicalDetails?.Dimensions || {};
-        const kerbWeight = dims.KerbWeightMin || dims.KerbWeight || dims.UnladenWeight || null;
+        // Extract weight using same paths as quote widget
+        const td2 = json.Results?.VehicleDetails?.DvlaTechnicalDetails || {};
+        const wt = json.Results?.ModelDetails?.Weights || {};
+        const kerbWeight = wt.KerbWeightKg || td2.MassInServiceKg || td2.GrossWeightKg || null;
         document.getElementById('mbMake').value = make;
         document.getElementById('mbModel').value = model;
         document.getElementById('mbYear').value = year;
