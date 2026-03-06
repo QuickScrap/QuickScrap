@@ -346,56 +346,77 @@
 
 <!-- MANUAL BOOKING MODAL -->
 <div class="modal-overlay" id="manualBookingModal">
-  <div class="modal" style="max-width:580px;">
+  <div class="modal" style="max-width:600px;">
     <h3>+ Manual Self-Bill</h3>
-    <p style="font-size:.82rem;color:#999;margin-bottom:16px;margin-top:-10px;">Create a self-bill invoice for a customer who hasn't used the online system.</p>
+    <p style="font-size:.82rem;color:#999;margin-bottom:16px;margin-top:-10px;">Enter the reg and postcode to generate a quote, then fill in customer details.</p>
 
-    <label>Reg Plate *</label>
-    <div style="display:flex;gap:8px;">
-      <div style="background:#FFD21F;display:flex;align-items:center;padding:0 12px;gap:6px;flex-shrink:0;">
-        <span>🇬🇧</span>
-        <input id="mbReg" type="text" placeholder="AB12 CDE" maxlength="8"
-          style="background:transparent;border:none;font-family:'Anton',sans-serif;font-size:1rem;letter-spacing:3px;text-transform:uppercase;outline:none;color:#383838;width:110px;padding:10px 0;"
-          oninput="this.value=this.value.toUpperCase()" />
+    <!-- STEP 1: Reg + Postcode + Generate Quote -->
+    <div style="background:#2a2a2a;padding:16px;border-left:3px solid #FFD21F;margin-bottom:16px;">
+      <div style="font-size:.72rem;font-weight:700;letter-spacing:1.5px;color:#FFD21F;margin-bottom:10px;">STEP 1 — VEHICLE & QUOTE</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;">
+        <div>
+          <label style="margin-top:0;">Reg Plate *</label>
+          <div style="background:#FFD21F;display:flex;align-items:center;padding:0 10px;gap:6px;">
+            <span>🇬🇧</span>
+            <input id="mbReg" type="text" placeholder="AB12 CDE" maxlength="8"
+              style="background:transparent;border:none;font-family:'Anton',sans-serif;font-size:1rem;letter-spacing:3px;text-transform:uppercase;outline:none;color:#383838;width:100%;padding:10px 0;"
+              oninput="this.value=this.value.toUpperCase()" />
+          </div>
+        </div>
+        <div>
+          <label style="margin-top:0;">Postcode *</label>
+          <input class="field" id="mbPostcode" type="text" placeholder="TR1 2SU" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()" />
+        </div>
+        <button class="btn" onclick="manualGenerateQuote()" id="mbGenerateBtn" style="white-space:nowrap;height:42px;">⚡ Generate Quote</button>
       </div>
-      <button class="btn" onclick="manualLookupVehicle()" id="mbLookupBtn">Look Up</button>
-    </div>
-    <div class="manual-vehicle-pill" id="mbVehiclePill">
-      <div class="manual-vehicle-name" id="mbVehicleName"></div>
-      <div class="manual-vehicle-detail" id="mbVehicleDetail"></div>
-    </div>
-    <div style="display:none;" id="mbVehicleFields">
-      <div class="field-row-3" style="margin-top:10px;">
-        <div><label>Make</label><input class="field" id="mbMake" type="text" placeholder="Ford" /></div>
-        <div><label>Model</label><input class="field" id="mbModel" type="text" placeholder="Focus" /></div>
-        <div><label>Year</label><input class="field" id="mbYear" type="text" placeholder="2015" /></div>
+
+      <!-- Vehicle pill shown after lookup -->
+      <div class="manual-vehicle-pill" id="mbVehiclePill">
+        <div class="manual-vehicle-name" id="mbVehicleName"></div>
+        <div class="manual-vehicle-detail" id="mbVehicleDetail"></div>
+      </div>
+      <div id="mbVehicleFields" style="display:none;">
+        <div class="field-row-3" style="margin-top:10px;">
+          <div><label>Make</label><input class="field" id="mbMake" type="text" placeholder="Ford" /></div>
+          <div><label>Model</label><input class="field" id="mbModel" type="text" placeholder="Focus" /></div>
+          <div><label>Year</label><input class="field" id="mbYear" type="text" placeholder="2015" /></div>
+        </div>
+      </div>
+      <div id="mbLookupMsg" style="font-size:.78rem;color:#ff8a80;margin-top:6px;"></div>
+
+      <!-- Quote result -->
+      <div id="mbQuoteResult" style="display:none;margin-top:14px;">
+        <label style="margin-top:0;">Payment Amount (£) *</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input class="field" id="mbAmount" type="number" min="1" style="font-family:'Anton',sans-serif;font-size:1.2rem;color:#FFD21F;max-width:140px;" />
+          <span style="font-size:.78rem;color:#999;">← Edit if needed</span>
+        </div>
       </div>
     </div>
-    <div style="margin-top:4px;margin-bottom:2px;"><span id="mbLookupMsg" style="font-size:.78rem;color:#ff8a80;"></span></div>
 
-    <label style="margin-top:14px;">Payment Amount (£) *</label>
-    <input class="field" id="mbAmount" type="number" min="1" placeholder="Auto-calculated from postcode or enter manually" oninput="this._manuallyEdited=true" />
+    <!-- STEP 2: Customer Details -->
+    <div style="background:#2a2a2a;padding:16px;border-left:3px solid #555;margin-bottom:16px;" id="mbStep2" style="display:none;">
+      <div style="font-size:.72rem;font-weight:700;letter-spacing:1.5px;color:#999;margin-bottom:10px;">STEP 2 — CUSTOMER DETAILS</div>
+      <label>Full Name *</label>
+      <input class="field" id="mbName" type="text" placeholder="Jane Smith" />
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div><label>Phone</label><input class="field" id="mbPhone" type="tel" placeholder="07700 000000" /></div>
+        <div><label>Email</label><input class="field" id="mbEmail" type="email" placeholder="jane@example.com" /></div>
+      </div>
+      <label>Collection Address</label>
+      <input class="field" id="mbAddress" type="text" placeholder="12 Example Street, Truro" />
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div><label>Collection Date</label><input class="field" id="mbDate" type="date" /></div>
+      </div>
+      <label>Notes</label>
+      <textarea class="field" id="mbNotes" rows="2" style="resize:vertical;" placeholder="Any additional notes..."></textarea>
+      <div style="margin-top:10px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;color:#999;text-transform:none;letter-spacing:0;margin:0;cursor:pointer;">
+          <input type="checkbox" id="mbSendEmail" checked /> Email invoice to customer
+        </label>
+      </div>
+    </div>
 
-    <label>Full Name *</label>
-    <input class="field" id="mbName" type="text" placeholder="Jane Smith" />
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <div><label>Phone</label><input class="field" id="mbPhone" type="tel" placeholder="07700 000000" /></div>
-      <div><label>Email</label><input class="field" id="mbEmail" type="email" placeholder="jane@example.com" /></div>
-    </div>
-    <label>Collection Address</label>
-    <input class="field" id="mbAddress" type="text" placeholder="12 Example Street, Truro" />
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <div><label>Postcode</label><input class="field" id="mbPostcode" type="text" placeholder="TR1 2SU" oninput="calcManualQuote()" /></div>
-      <div><label>Collection Date</label><input class="field" id="mbDate" type="date" /></div>
-    </div>
-    <label>Notes</label>
-    <textarea class="field" id="mbNotes" rows="2" style="resize:vertical;" placeholder="Any additional notes..."></textarea>
-
-    <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
-      <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;color:#999;text-transform:none;letter-spacing:0;margin:0;cursor:pointer;">
-        <input type="checkbox" id="mbSendEmail" checked /> Email invoice to customer
-      </label>
-    </div>
     <div class="modal-btns">
       <button class="btn" onclick="submitManualBooking()">⬇ Generate Self-Bill</button>
       <button class="btn outline" onclick="closeManualBookingModal()">Cancel</button>
@@ -1245,30 +1266,74 @@ document.addEventListener('click', e => {
 });
 
 // ── MANUAL BOOKING ────────────────────────────────────────────────
-function calcManualQuote() {
+async function manualGenerateQuote() {
+  const reg = document.getElementById('mbReg').value.trim().toUpperCase().replace(/\s/g,'');
   const postcode = document.getElementById('mbPostcode').value.trim().toUpperCase().replace(/\s/g,'');
-  if (!postcode || postcode.length < 2) return;
-  // Try progressively shorter prefixes: e.g. TR1 -> TR
+  const msgEl = document.getElementById('mbLookupMsg');
+  const btn = document.getElementById('mbGenerateBtn');
+
+  if (!reg) { msgEl.textContent = 'Please enter a reg plate'; return; }
+  if (!postcode) { msgEl.textContent = 'Please enter a postcode'; return; }
+
+  msgEl.textContent = '';
+  btn.disabled = true; btn.textContent = 'Looking up...';
+
+  // 1. Look up vehicle via API
+  try {
+    const apiKey = localStorage.getItem('sk_apikey');
+    if (!apiKey) throw new Error('No API key — add it in Settings');
+    const url = 'https://quickscrap-proxy.spring-fog-4db0.workers.dev/?vrm=' + reg + '&key=' + apiKey;
+    const res = await fetch(url);
+    if (res.ok) {
+      const json = await res.json();
+      if (json.ResponseInformation?.IsSuccessStatusCode) {
+        const vi = json.Results?.VehicleDetails?.VehicleIdentification || {};
+        const md = json.Results?.ModelDetails || {};
+        const make = md.ModelIdentification?.Make || vi.DvlaMake || '';
+        const model = md.ModelIdentification?.Model || vi.DvlaModel || '';
+        const year = vi.YearOfManufacture || '';
+        const fuel = md.Powertrain?.FuelType || vi.DvlaFuelType || '';
+        document.getElementById('mbMake').value = make;
+        document.getElementById('mbModel').value = model;
+        document.getElementById('mbYear').value = year;
+        document.getElementById('mbVehicleName').textContent = [year, make, model].filter(Boolean).join(' ');
+        document.getElementById('mbVehicleDetail').textContent = [fuel, reg].filter(Boolean).join(' · ');
+        document.getElementById('mbVehiclePill').classList.add('show');
+        document.getElementById('mbVehicleFields').style.display = 'block';
+      } else {
+        throw new Error('Vehicle not found');
+      }
+    }
+  } catch(e) {
+    msgEl.textContent = e.message + ' — fill in vehicle details manually below';
+    document.getElementById('mbVehicleFields').style.display = 'block';
+  }
+
+  // 2. Calculate quote from postcode
   let pc = null;
   for (let len = Math.min(4, postcode.length); len >= 1; len--) {
-    const prefix = postcode.slice(0, len);
-    pc = pcs.find(p => p.prefix === prefix);
+    pc = pcs.find(p => p.prefix === postcode.slice(0, len));
     if (pc) break;
   }
+
+  const quoteResult = document.getElementById('mbQuoteResult');
   const amtEl = document.getElementById('mbAmount');
+  const step2 = document.getElementById('mbStep2');
+
   if (pc && pc.served && pc.pricePerTon) {
     const estimated = Math.round((1200/1000) * pc.pricePerTon);
-    if (amtEl && !amtEl._manuallyEdited) {
-      amtEl.value = estimated;
-      amtEl.style.borderColor = '#2ecc71';
-      setTimeout(() => { if(amtEl) amtEl.style.borderColor = ''; }, 2000);
-      toast('Quote auto-calculated: £' + estimated + ' (override if needed)');
-    }
-  } else if (postcode.length >= 4 && amtEl && !amtEl._manuallyEdited) {
-    // Postcode entered but no match found
-    amtEl.style.borderColor = '#ff8a80';
-    setTimeout(() => { if(amtEl) amtEl.style.borderColor = ''; }, 2000);
+    amtEl.value = estimated;
+    quoteResult.style.display = 'block';
+    step2.style.display = 'block';
+    toast('Quote: £' + estimated + ' — edit if needed');
+  } else {
+    amtEl.value = '';
+    quoteResult.style.display = 'block';
+    step2.style.display = 'block';
+    msgEl.textContent += (msgEl.textContent ? ' · ' : '') + 'Postcode not in coverage area — enter amount manually';
   }
+
+  btn.disabled = false; btn.textContent = '⚡ Generate Quote';
 }
 
 function openManualBookingModal() {
@@ -1277,10 +1342,11 @@ function openManualBookingModal() {
   document.getElementById('mbDate').value = today;
   document.getElementById('mbMsg').textContent = '';
   document.getElementById('mbLookupMsg').textContent = '';
-  document.getElementById('mbVehiclePill').classList.remove('show');
-  document.getElementById('mbVehicleFields').style.display = 'none';
   // Clear all fields
-  const mbAmtEl = document.getElementById('mbAmount'); if (mbAmtEl) mbAmtEl._manuallyEdited = false;
+  document.getElementById('mbQuoteResult').style.display='none';
+  document.getElementById('mbStep2').style.display='none';
+  document.getElementById('mbVehiclePill').classList.remove('show');
+  document.getElementById('mbVehicleFields').style.display='none';
   ['mbReg','mbAmount','mbName','mbPhone','mbEmail','mbAddress','mbPostcode','mbNotes','mbMake','mbModel','mbYear'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
@@ -1292,41 +1358,7 @@ function closeManualBookingModal() {
   document.getElementById('manualBookingModal').classList.remove('show');
 }
 
-async function manualLookupVehicle() {
-  const reg = document.getElementById('mbReg').value.trim().toUpperCase().replace(/\s/g,'');
-  if (!reg || reg.length < 2) { document.getElementById('mbLookupMsg').textContent = 'Please enter a reg plate'; return; }
-  const btn = document.getElementById('mbLookupBtn');
-  btn.disabled = true; btn.textContent = 'Looking up...';
-  document.getElementById('mbLookupMsg').textContent = '';
-  try {
-    const apiKey = localStorage.getItem('sk_apikey');
-    if (!apiKey) throw new Error('No API key set');
-    const url = 'https://quickscrap-proxy.spring-fog-4db0.workers.dev/?vrm=' + reg + '&key=' + apiKey;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Lookup failed');
-    const json = await res.json();
-    if (!json.ResponseInformation?.IsSuccessStatusCode) throw new Error('Vehicle not found');
-    const vi = json.Results?.VehicleDetails?.VehicleIdentification || {};
-    const md = json.Results?.ModelDetails || {};
-    const pt = md.Powertrain || {};
-    const make = md.ModelIdentification?.Make || vi.DvlaMake || '';
-    const model = md.ModelIdentification?.Model || vi.DvlaModel || '';
-    const year = vi.YearOfManufacture || '';
-    const fuel = pt.FuelType || vi.DvlaFuelType || '';
-    document.getElementById('mbMake').value = make;
-    document.getElementById('mbModel').value = model;
-    document.getElementById('mbYear').value = year;
-    document.getElementById('mbVehicleName').textContent = year + ' ' + make + ' ' + model;
-    document.getElementById('mbVehicleDetail').textContent = fuel + (fuel ? ' · ' : '') + reg;
-    document.getElementById('mbVehiclePill').classList.add('show');
-    document.getElementById('mbVehicleFields').style.display = 'block';
-  } catch(e) {
-    document.getElementById('mbLookupMsg').textContent = e.message + ' — fill in vehicle details manually below';
-    document.getElementById('mbVehicleFields').style.display = 'block';
-  } finally {
-    btn.disabled = false; btn.textContent = 'Look Up';
-  }
-}
+// manualLookupVehicle replaced by manualGenerateQuote
 
 async function submitManualBooking() {
   const reg     = document.getElementById('mbReg').value.trim().toUpperCase();
