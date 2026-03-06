@@ -424,9 +424,10 @@
       </div>
     </div>
 
-    <div class="modal-btns">
-      <button class="btn" onclick="submitManualBooking()">⬇ Generate Self-Bill</button>
-      <button class="btn outline" onclick="closeManualBookingModal()">Cancel</button>
+    <div class="modal-btns" style="flex-wrap:wrap;">
+      <button class="btn" onclick="submitManualBooking('selfbill')" style="flex:1;min-width:160px;">⬇ Generate Self-Bill</button>
+      <button class="btn outline" onclick="submitManualBooking('booking')" style="flex:1;min-width:160px;">📋 Just Add Booking</button>
+      <button class="btn outline" onclick="closeManualBookingModal()" style="flex:0;">Cancel</button>
     </div>
     <div id="mbMsg" style="margin-top:10px;font-size:.82rem;"></div>
   </div>
@@ -1287,8 +1288,7 @@ async function manualGenerateQuote() {
 
   // 1. Look up vehicle via API
   try {
-    const apiKey = localStorage.getItem('sk_apikey');
-    if (!apiKey) throw new Error('No API key — add it in Settings');
+    const apiKey = 'd04a5887-6490-4429-b09c-45e35fe112ae';
     const url = 'https://quickscrap-proxy.spring-fog-4db0.workers.dev/?vrm=' + reg + '&key=' + apiKey;
     const res = await fetch(url);
     if (res.ok) {
@@ -1300,10 +1300,23 @@ async function manualGenerateQuote() {
         const model = md.ModelIdentification?.Model || vi.DvlaModel || '';
         const year = vi.YearOfManufacture || '';
         const fuel = md.Powertrain?.FuelType || vi.DvlaFuelType || '';
-        // Extract weight using same paths as quote widget
+        // Extract weight - check every possible path in the API response
         const td2 = json.Results?.VehicleDetails?.DvlaTechnicalDetails || {};
+        const vi2 = json.Results?.VehicleDetails?.VehicleIdentification || {};
         const wt = json.Results?.ModelDetails?.Weights || {};
-        const kerbWeight = wt.KerbWeightKg || td2.MassInServiceKg || td2.GrossWeightKg || null;
+        const tech = json.Results?.ModelDetails?.TechnicalDetails || {};
+        const dims = tech.Dimensions || {};
+        const kerbWeight = wt.KerbWeightKg 
+          || wt.KerbWeight
+          || td2.MassInServiceKg 
+          || td2.GrossWeightKg
+          || td2.UnladenWeightKg
+          || vi2.MassInService
+          || dims.KerbWeightMin
+          || dims.KerbWeightMax
+          || null;
+        // Debug: log what weights we got (visible in browser console)
+        console.log('Weight paths:', {KerbWeightKg: wt.KerbWeightKg, MassInServiceKg: td2.MassInServiceKg, GrossWeightKg: td2.GrossWeightKg, UnladenWeightKg: td2.UnladenWeightKg, wt_full: wt, td2_full: td2});
         document.getElementById('mbMake').value = make;
         document.getElementById('mbModel').value = model;
         document.getElementById('mbYear').value = year;
@@ -1391,7 +1404,7 @@ function closeManualBookingModal() {
 
 // manualLookupVehicle replaced by manualGenerateQuote
 
-async function submitManualBooking() {
+async function submitManualBooking(mode = "selfbill") {
   const reg     = document.getElementById('mbReg').value.trim().toUpperCase();
   const amount  = parseFloat(document.getElementById('mbAmount').value);
   const name    = document.getElementById('mbName').value.trim();
@@ -1407,21 +1420,26 @@ async function submitManualBooking() {
   const sendEmail = document.getElementById('mbSendEmail').checked;
   const msgEl   = document.getElementById('mbMsg');
 
-  if (!reg || !name || !amount || amount < 1) {
+  if (!reg || !name) {
     msgEl.style.color = '#ff8a80';
-    msgEl.textContent = '⚠ Please fill in reg, name and payment amount at minimum.';
+    msgEl.textContent = '⚠ Please fill in reg and name at minimum.';
+    return;
+  }
+  if (mode === 'selfbill' && (!amount || amount < 1)) {
+    msgEl.style.color = '#ff8a80';
+    msgEl.textContent = '⚠ Payment amount required to generate a self-bill.';
     return;
   }
 
   msgEl.style.color = '#a8f0c6';
-  msgEl.textContent = '⏳ Saving booking...';
+  msgEl.textContent = mode === 'selfbill' ? '⏳ Saving booking...' : '⏳ Adding booking...';
 
   // Save to Supabase bookings table
   const weight    = parseFloat(document.getElementById('mbWeight').value) || null;
   const bookingRow = {
     name, phone, email, address, postcode, reg,
     quote: amount, make, model, year, weight,
-    status: 'completed',
+    status: mode === 'selfbill' ? 'completed' : 'new',
     notes: notes || null,
     driveable: null, has_v5: null, has_keys: null
   };
@@ -1439,7 +1457,7 @@ async function submitManualBooking() {
       date: new Date().toLocaleDateString('en-GB'),
       name, phone, email, address, postcode, reg,
       quote: amount, make, model, year,
-      status: 'completed',
+      status: mode === 'selfbill' ? 'completed' : 'new',
       driveable: '—', has_v5: '—', has_keys: '—',
       notes: notes || '—', rawNotes: notes || '',
       archived: false
@@ -1447,12 +1465,14 @@ async function submitManualBooking() {
     bookings.unshift(newBooking);
     renderBookings(); renderStats();
 
-    msgEl.textContent = '✓ Booking saved — generating invoice...';
-
-    // Generate self-bill using existing function
-    await generateSelfBill(newBooking.id, sendEmail);
-
-    msgEl.textContent = '✓ Done! Invoice downloaded' + (sendEmail && email ? ' and emailed to ' + email : '') + '.';
+    if (mode === 'selfbill') {
+      msgEl.textContent = '✓ Booking saved — generating invoice...';
+      await generateSelfBill(newBooking.id, sendEmail);
+      msgEl.textContent = '✓ Done! Invoice downloaded' + (sendEmail && email ? ' and emailed to ' + email : '') + '.';
+    } else {
+      msgEl.style.color = '#a8f0c6';
+      msgEl.textContent = '✓ Booking added successfully!';
+    }
     setTimeout(() => closeManualBookingModal(), 2000);
   } catch(e) {
     msgEl.style.color = '#ff8a80';
